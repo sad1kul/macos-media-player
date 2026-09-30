@@ -69,6 +69,20 @@ Every feature should identify:
 
 Do not claim a hardware or visual behaviour is validated solely because CI passes.
 
+## Branch, PR and validation workflow
+
+All project changes follow this sequence:
+
+1. Create a separate working branch from the correct baseline.
+2. Implement the change on that branch.
+3. Run the first build and test pass locally before opening a pull request.
+4. Open a pull request only after the first test pass succeeds.
+5. Run a second validation pass against the pull-request state. This should include CI where available and a fresh manual macOS build/test for native playback, windowing, hardware acceleration, or other behaviour that CI cannot prove.
+6. Fix any issue on the same branch and repeat the relevant tests.
+7. Merge only after both the pre-PR test and the PR validation pass succeed.
+
+Do not merge code merely because it compiles or because CI is green when the feature depends on real macOS playback or UI behaviour.
+
 ## Commits
 
 Use small, descriptive commits. Examples:
