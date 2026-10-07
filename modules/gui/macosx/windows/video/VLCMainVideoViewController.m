@@ -40,8 +40,6 @@
 #import "playqueue/VLCPlayerController.h"
 #import "playqueue/VLCPlayQueueController.h"
 
-#import "private/PIPSPI.h"
-
 #import "views/VLCBottomBarView.h"
 #import "views/VLCPlaybackEndViewController.h"
 #import "views/VLCUIUnits.h"
@@ -52,62 +50,16 @@
 #import "windows/video/VLCMainVideoViewOverlayView.h"
 #import "windows/video/VLCVideoOutputProvider.h"
 #import "windows/video/VLCVideoWindowCommon.h"
+#import "windows/video/VLCVividockFloatingWindowController.h"
 
 NSString * const VLCUseClassicVideoPlayerLayoutKey = @"VLCUseClassicVideoPlayerLayoutKey";
 
-@interface PIPVoutViewController : NSViewController
-@property (nonatomic) NSRect previousBounds;
-@property (nonatomic, copy) void (^boundsChangeHandler)(void);
-@end
-
-@implementation PIPVoutViewController
-
-- (void)setView:(NSView *)view {
-    [super setView:view];
-    self.previousBounds = NSZeroRect;
-}
-
-- (void)viewDidLoad {
-    [super viewDidLoad];
-}
-
-- (void)viewWillAppear {
-    [super viewWillAppear];
-
-    if (self.view.superview) {
-        [self.view applyConstraintsToFillSuperview];
-    }
-}
-
-- (void)viewDidAppear {
-    [super viewDidAppear];
-}
-
-- (void)viewDidLayout 
-{
-    [super viewDidLayout];
-
-    NSRect currentBounds = self.view.bounds;
-    if (!NSIsEmptyRect(currentBounds) && !NSEqualRects(currentBounds, _previousBounds)) {
-            _previousBounds = currentBounds;
-
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if (self.boundsChangeHandler) {
-                    self.boundsChangeHandler();
-                    self.boundsChangeHandler = nil;
-                }
-            });
-    }
-}
-@end
-
-@interface VLCMainVideoViewController() <PIPViewControllerDelegate>
+@interface VLCMainVideoViewController()
 {
     NSTimer *_hideControlsTimer;
     NSLayoutConstraint *_returnButtonBottomConstraint;
     NSLayoutConstraint *_playQueueButtonBottomConstraint;
-    PIPViewController *_pipViewController;
-    PIPVoutViewController *_voutViewController;
+    VLCVividockFloatingWindowController *_floatingWindowController;
 
     BOOL _isFadingIn;
 }
@@ -156,10 +108,6 @@ NSString * const VLCUseClassicVideoPlayerLayoutKey = @"VLCUseClassicVideoPlayerL
                                    name:VLCPlayerPictureInPictureChanged
                                  object:nil];
 
-        Class PIPViewControllerClass = NSClassFromString(@"PIPViewController");
-        _pipViewController = [[PIPViewControllerClass alloc] init];
-        _pipViewController.delegate = self;
-        _pipViewController.userCanResize = true;
     }
     return self;
 }
@@ -634,12 +582,13 @@ NSString * const VLCUseClassicVideoPlayerLayoutKey = @"VLCUseClassicVideoPlayerL
 
 - (BOOL)pipIsActive
 {
-    return _voutViewController != nil;
+    return _floatingWindowController != nil;
 }
 
 - (void)pictureInPictureChanged:(NSNotification *)notification
 {
     if (self.pipIsActive) {
+        [_floatingWindowController close];
         return;
     }
 
@@ -649,57 +598,38 @@ NSString * const VLCUseClassicVideoPlayerLayoutKey = @"VLCUseClassicVideoPlayerL
         [videoWindow leaveFullscreenWithAnimation:NO];
     }
 
-    NSWindow * const window = self.view.window;
-    [window orderOut:window];
-    self.retainedWindow = window;
-
-    _voutViewController = [PIPVoutViewController new];
-    _voutViewController.view = [self acquireVideoView];
-    NSAssert(_voutViewController.view != nil, @"Vout view should not be nil");
     VLCPlayerController * const controller = notification.object;
-    _pipViewController.playing = controller.playerState == VLC_PLAYER_STATE_PLAYING;
-    
-    VLCInputItem * const item = controller.currentMedia;
-    input_item_t * const p_input = item.vlcInputItem;
-    vlc_mutex_lock(&p_input->lock);
-    const struct input_item_es *item_es;
-    vlc_vector_foreach_ref(item_es, &p_input->es_vec) {
-        if (item_es->es.i_cat != VIDEO_ES) {
-            continue;
-        }
-        const video_format_t * const fmt = &item_es->es.video;
-        unsigned int width = fmt->i_visible_width;
-        unsigned int height = fmt->i_visible_height;
-        if (fmt->i_sar_num && fmt->i_sar_den) {
-            height = (height * fmt->i_sar_den) / fmt->i_sar_num;
-        }
-        _pipViewController.aspectRatio = CGSizeMake(width, height);
-        break;
+    NSView * const videoView = [self acquireVideoView];
+    if (videoView == nil) {
+        return;
     }
-    vlc_mutex_unlock(&p_input->lock);
-    _pipViewController.title = window.title;
-    
+
+    NSWindow * const window = self.view.window;
+    self.retainedWindow = window;
+    [window orderOut:window];
+
+    _floatingWindowController = [[VLCVividockFloatingWindowController alloc]
+        initWithVideoView:videoView
+        playerController:controller
+        title:window.title];
+
     __weak typeof(self) weakSelf = self;
-
-    void (^presentVcAsPip)(void) = ^() {
+    _floatingWindowController.closeHandler = ^(NSView * const returnedVideoView) {
         typeof(self) strongSelf = weakSelf;
-        if (strongSelf && strongSelf->_voutViewController.presentingViewController == nil) {
-            [strongSelf->_pipViewController presentViewControllerAsPictureInPicture:strongSelf->_voutViewController];
+        if (strongSelf == nil) {
+            return;
         }
+
+        NSWindow * const retainedWindow = strongSelf.retainedWindow;
+        [strongSelf returnVideoView:returnedVideoView];
+        if ([retainedWindow isKindOfClass:VLCLibraryWindow.class]) {
+            [(VLCLibraryWindow *)retainedWindow enableVideoPlaybackAppearance];
+        }
+        [retainedWindow makeKeyAndOrderFront:retainedWindow];
+        strongSelf.retainedWindow = nil;
+        strongSelf->_floatingWindowController = nil;
     };
-
-    if (!controller.currentMediaIsAudioOnly) {
-        _voutViewController.boundsChangeHandler = presentVcAsPip;
-    }
-
-    // Present PiP asynchronously. Previously the video path waited for
-    // PIPVoutViewController's viewDidLayout to fire via boundsChangeHandler, but
-    // on macOS 26 Tahoe the detached view never receives a layout pass, so the
-    // handler never fired. The acquired view already has valid bounds so we can
-    // present immediately on the next run-loop cycle for both paths.
-    dispatch_async(dispatch_get_main_queue(), ^{
-        presentVcAsPip();
-    });
+    [_floatingWindowController showWindow:self];
 
     if ([window isKindOfClass:VLCLibraryWindow.class]) {
         [self returnToLibrary:self];
@@ -807,56 +737,6 @@ NSString * const VLCUseClassicVideoPlayerLayoutKey = @"VLCUseClassicVideoPlayerL
     [self.playbackEndViewController.view removeFromSuperview];
     if (self.endViewDismissHandler)
         self.endViewDismissHandler();
-}
-
-#pragma mark - PIPViewControllerDelegate
-
-- (BOOL)pipShouldClose:(PIPViewController *)pip
-{
-    return YES;
-}
-
-- (void)pipWillClose:(PIPViewController *)pip
-{
-    NSWindow * const window = self.retainedWindow;
-    pip.replacementWindow = window;
-    pip.replacementRect = self.view.frame;
-    if ([window isKindOfClass:VLCLibraryWindow.class]) {
-        [(VLCLibraryWindow *)window enableVideoPlaybackAppearance];
-    }
-    [window makeKeyAndOrderFront:window];
-    self.retainedWindow = nil;
-}
-
-- (void)pipDidClose:(PIPViewController *)pip
-{
-    [self returnVideoView:_voutViewController.view];
-    _voutViewController = nil;
-}
-
-- (void)pipActionPlay:(PIPViewController *)pip
-{
-    VLCPlayerController * const controller =
-        VLCMain.sharedInstance.playQueueController.playerController;
-    if (controller.playerState == VLC_PLAYER_STATE_PAUSED) {
-        [controller resume];
-    } else {
-        [controller start];
-    }
-}
-
-- (void)pipActionStop:(PIPViewController *)pip
-{
-    VLCPlayerController * const controller =
-        VLCMain.sharedInstance.playQueueController.playerController;
-    [controller pause];
-}
-
-- (void)pipActionPause:(PIPViewController *)pip
-{
-    VLCPlayerController * const controller =
-        VLCMain.sharedInstance.playQueueController.playerController;
-    [controller pause];
 }
 
 @end

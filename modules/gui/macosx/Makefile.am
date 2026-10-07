@@ -568,6 +568,8 @@ libmacosx_plugin_la_SOURCES = \
 	gui/macosx/windows/video/VLCMainVideoViewController.m \
 	gui/macosx/windows/video/VLCMainVideoViewOverlayView.h \
 	gui/macosx/windows/video/VLCMainVideoViewOverlayView.m \
+	gui/macosx/windows/video/VLCVividockFloatingWindowController.h \
+	gui/macosx/windows/video/VLCVividockFloatingWindowController.m \
 	gui/macosx/windows/video/VLCVideoOutputProvider.h \
 	gui/macosx/windows/video/VLCVideoOutputProvider.m \
 	gui/macosx/windows/video/VLCVideoWindowCommon.h \
