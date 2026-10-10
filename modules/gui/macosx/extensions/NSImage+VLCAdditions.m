@@ -100,6 +100,16 @@ static NSImage *ImageFromEmoji(NSString *emoji, NSSize size)
     return [NSImage imageNamed:@"VLCStatusBarIcon"];
 }
 
++ (NSImage *)VividockAppIconImage
+{
+    return [NSImage imageNamed:@"Vividock"];
+}
+
++ (NSImage *)VividockStatusBarIconImage
+{
+    return [NSImage imageNamed:@"VividockStatusBarIcon"];
+}
+
 + (NSImage *)VLCSidebarMovieImage
 {
     return [NSImage imageNamed:@"sidebar-movie"];

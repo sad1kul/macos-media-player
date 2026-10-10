@@ -20,9 +20,9 @@ macos-install:
 	DESTDIR="$(macos_destdir)" $(MAKE) install
 	touch "$(macos_destdir)"
 
-# VLC.app for packaging and giving it to your friends
+# Vividock.app for packaging and giving it to your friends
 # use package-macosx to get a nice dmg
-VLC.app: macos-install
+Vividock.app: macos-install
 	rm -Rf $@
 	## Copy Contents
 	cp -R "$(macos_destdir)$(datadir)/macosx/" $@
@@ -88,38 +88,38 @@ endif
 	find $@ -type d -exec chmod ugo+rx '{}' \;
 	find $@ -type f -exec chmod ugo+r '{}' \;
 	## Ad-hoc sign the bundle
-	VLC_LIB_PATH="$@/Contents/Frameworks" "$(srcdir)/extras/package/macosx/codesign.sh" -i -
+	VLC_APP_BUNDLE="$@" VLC_LIB_PATH="$@/Contents/Frameworks" "$(srcdir)/extras/package/macosx/codesign.sh" -i -
 
 package-macosx-sdk: macos-install
 	rm -f "$(top_builddir)/vlc-macos-sdk-$(VERSION).tar.gz"
 	tar -cf - --exclude "share/macosx" -C "$(macos_destdir)" . \
 		| gzip -c > "$(top_builddir)/vlc-macos-sdk-$(VERSION).tar.gz"
 
-package-macosx: VLC.app
+package-macosx: Vividock.app
 	rm -f "$(top_builddir)/vlc-$(VERSION).dmg"
 if HAVE_DMGBUILD
 	@echo "Packaging fancy DMG using dmgbuild"
 	cd "$(top_srcdir)/extras/package/macosx/dmg" && dmgbuild -s "dmg_settings.py" \
-		-D app="$(abs_top_builddir)/VLC.app" "VLC Media Player" "$(abs_top_builddir)/vlc-$(VERSION).dmg"
+		-D app="$(abs_top_builddir)/Vividock.app" "Vividock" "$(abs_top_builddir)/vlc-$(VERSION).dmg"
 else !HAVE_DMGBUILD
 	@echo "Packaging non-fancy DMG"
 	## Create directory for DMG contents
 	mkdir -p "$(top_builddir)/vlc-$(VERSION)"
 	## Copy contents
-	cp -Rp "$(top_builddir)/VLC.app" "$(top_builddir)/vlc-$(VERSION)/VLC.app"
+	cp -Rp "$(top_builddir)/Vividock.app" "$(top_builddir)/vlc-$(VERSION)/Vividock.app"
 	## Symlink to Applications so users can easily drag-and-drop the App to it
 	$(LN_S) -f /Applications "$(top_builddir)/vlc-$(VERSION)/"
 	## Create DMG
-	hdiutil create -srcfolder "$(top_builddir)/vlc-$(VERSION)" -volname "VLC Media Player" \
+	hdiutil create -srcfolder "$(top_builddir)/vlc-$(VERSION)" -volname "Vividock" \
 		-format UDBZ -fs HFS+ -o "$(top_builddir)/vlc-$(VERSION).dmg"
 	## Cleanup
 	rm -rf "$(top_builddir)/vlc-$(VERSION)"
 endif
 
-package-macosx-zip: VLC.app
+package-macosx-zip: Vividock.app
 	rm -f "$(top_builddir)/vlc-$(VERSION).zip"
 	mkdir -p $(top_builddir)/vlc-$(VERSION)/Goodies/
-	cp -Rp $(top_builddir)/VLC.app $(top_builddir)/vlc-$(VERSION)/VLC.app
+	cp -Rp $(top_builddir)/Vividock.app $(top_builddir)/vlc-$(VERSION)/Vividock.app
 	cd $(srcdir); cp -R AUTHORS COPYING README.md THANKS NEWS $(abs_top_builddir)/vlc-$(VERSION)/Goodies/
 	zip -r -y -9 $(top_builddir)/vlc-$(VERSION).zip $(top_builddir)/vlc-$(VERSION)
 	rm -rf "$(top_builddir)/vlc-$(VERSION)"
@@ -127,12 +127,12 @@ package-macosx-zip: VLC.app
 package-macosx-release:
 	rm -f "$(top_builddir)/vlc-$(VERSION)-release.zip"
 	mkdir -p $(top_builddir)/vlc-$(VERSION)-release
-	cp -Rp $(top_builddir)/VLC.app $(top_builddir)/vlc-$(VERSION)-release/
+	cp -Rp $(top_builddir)/Vividock.app $(top_builddir)/vlc-$(VERSION)-release/
 	cp $(srcdir)/extras/package/macosx/dmg/* $(top_builddir)/vlc-$(VERSION)-release/
 	cp "$(srcdir)/extras/package/macosx/codesign.sh" $(top_builddir)/vlc-$(VERSION)-release/
 	cp "$(srcdir)/extras/package/macosx/vlc-hardening.entitlements" $(top_builddir)/vlc-$(VERSION)-release/
 	cp "$(pkglibexecdir)/vlc-cache-gen" $(top_builddir)/vlc-$(VERSION)-release/
-	install_name_tool -add_rpath "@executable_path/VLC.app/Contents/Frameworks" $(top_builddir)/vlc-$(VERSION)-release/vlc-cache-gen
+	install_name_tool -add_rpath "@executable_path/Vividock.app/Contents/Frameworks" $(top_builddir)/vlc-$(VERSION)-release/vlc-cache-gen
 	zip -r -y -9 $(top_builddir)/vlc-$(VERSION)-release.zip $(top_builddir)/vlc-$(VERSION)-release
 	rm -rf "$(top_builddir)/vlc-$(VERSION)-release"
 
@@ -170,5 +170,6 @@ EXTRA_DIST += \
 	extras/package/macosx/dmg/disk_image.icns \
 	extras/package/macosx/dmg/background.tiff \
 	extras/package/macosx/asset_sources/vlc_app_icon.svg \
+	extras/package/macosx/asset_sources/vividock_app_icon.png \
 	extras/package/macosx/VLC.entitlements \
 	extras/package/macosx/VLC.xcodeproj/project.pbxproj

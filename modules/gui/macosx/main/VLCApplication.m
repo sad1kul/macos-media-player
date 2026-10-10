@@ -95,16 +95,8 @@
     if (_vlcAppIconImage != nil)
         return _vlcAppIconImage;
 
-    if (self.winterHolidaysTheming) {
-        /* After day 354 of the year, the usual VLC cone is replaced by another cone
-         * wearing a Father Xmas hat.
-         * Note: this icon doesn't represent an endorsement of The Coca-Cola Company.
-         */
-        _vlcAppIconImage = NSImage.VLCXmasAppIconImage;
-    }
-
-    if (_vlcAppIconImage == nil)
-        _vlcAppIconImage = NSImage.VLCAppIconImage;
+    _vlcAppIconImage = NSImage.VividockAppIconImage;
+    NSAssert(_vlcAppIconImage != nil, @"The Vividock application icon resource is missing");
 
     return _vlcAppIconImage;
 }

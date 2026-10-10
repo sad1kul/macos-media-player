@@ -155,7 +155,7 @@
 
     [self inputItemChanged:nil];
 
-    [self setMetadataTitle:_NS("VLC media player") artist:_NS("Nothing playing") album:nil andCover:NSImage.VLCNoArtImage];
+    [self setMetadataTitle:_NS("Vividock") artist:_NS("Nothing playing") album:nil andCover:NSImage.VividockAppIconImage];
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath
@@ -194,7 +194,8 @@
         [self.statusItem setEnabled:YES];
 
         // Set the status item image
-        NSImage *menuIcon = NSImage.VLCStatusBarIconImage;
+        NSImage *menuIcon = NSImage.VividockStatusBarIconImage;
+        NSAssert(menuIcon != nil, @"The Vividock status bar icon resource is missing");
         [menuIcon setTemplate:YES];
         [self.statusItem setImage:menuIcon];
 
@@ -352,7 +353,8 @@
         album = inputItem.album;
     } else {
         /* Nothing playing */
-        title = _NS("VLC media player");
+        title = _NS("Vividock");
+        coverArtImage = NSImage.VividockAppIconImage;
         artist = _NS("Nothing playing");
     }
 

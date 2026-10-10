@@ -93,7 +93,8 @@
     [o_copyright_field setStringValue: copyrightText];
 
     /* l10n */
-    [[self window] setTitle: _NS("About VLC media player")];
+    [[self window] setTitle: _NS("About Vividock")];
+    [o_name_field setStringValue:@"Vividock"];
     NSDictionary *stringAttributes = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:NSUnderlineStyleSingle], NSUnderlineStyleAttributeName, [NSColor secondaryLabelColor], NSForegroundColorAttributeName, [NSFont systemFontOfSize:13], NSFontAttributeName, nil];
     NSAttributedString *attrStr;
     attrStr = [[NSAttributedString alloc] initWithString:_NS("Credits") attributes:stringAttributes];
@@ -114,7 +115,8 @@
     [o_revision_field setStringValue: [NSString stringWithFormat:@"Compiled by %s with %@ (%s %s)", VLC_CompileBy(), compiler, __DATE__, __TIME__]];
 
     /* Setup the nameversion field */
-    [o_name_version_field setStringValue: [NSString stringWithFormat:@"Version %s (%s)", VERSION_MESSAGE, PLATFORM]];
+    [o_name_version_field setStringValue:
+        [NSString stringWithFormat:@"Vividock development build · VLC %s (%s)", VERSION_MESSAGE, PLATFORM]];
 
     NSMutableArray *tmpArray = [NSMutableArray arrayWithArray: [toNSStr(psz_authors) componentsSeparatedByString:@"\n\n"]];
     NSUInteger count = [tmpArray count];
@@ -127,15 +129,13 @@
     _authorsString = [tmpArray componentsJoinedByString:@"\n\n"];
 
     /* setup join us! */
-    NSString *joinus = toNSStr(_(""
-                                 "<p>VLC media player is a free and open source media player, encoder, and "
-                                 "streamer made by the volunteers of the <a href=\"https://www.videolan.org/"
-                                 "\"><span style=\" text-decoration: underline; color:#0057ae;\">VideoLAN</"
-                                 "span></a> community.</p><p>VLC uses its internal codecs, works on "
-                                 "essentially every popular platform, and can read almost all files, CDs, "
-                                 "DVDs, network streams, capture cards and other media formats!</p><p><a href="
-                                 "\"https://www.videolan.org/contribute/\"><span style=\" text-decoration: "
-                                 "underline; color:#0057ae;\">Help and join us!</span></a>"));
+    NSString *joinus = @"<p><b>A macOS-focused media player built for advanced floating playback.</b></p>"
+                       @"<p>Vividock is an independently maintained macOS media player based on VLC media "
+                       @"player, developed by the VideoLAN project and its contributors.</p>"
+                       @"<p>VLC is free and open source software from the <a href=\"https://www.videolan.org/\">"
+                       @"<span style=\"text-decoration: underline; color:#0057ae;\">VideoLAN project</span></a>. "
+                       @"Original authors, credits, license information and trademark acknowledgments remain "
+                       @"available below.</p>";
 
     NSString *joinUsWithStyle = [NSString stringWithFormat:@"<div style=\"text-align:left;font-family: -apple-system, Helvetica Neue;\">%@</div>", joinus];
     NSMutableAttributedString *joinus_readytorender = [[NSMutableAttributedString alloc] initWithHTML:[joinUsWithStyle dataUsingEncoding:NSUTF8StringEncoding allowLossyConversion:YES]

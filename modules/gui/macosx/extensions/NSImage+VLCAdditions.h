@@ -33,6 +33,8 @@ struct vlc_object_t;
 @property (class, readonly) NSImage *VLCAppIconImage;
 @property (class, readonly) NSImage *VLCXmasAppIconImage;
 @property (class, readonly) NSImage *VLCStatusBarIconImage;
+@property (class, readonly) NSImage *VividockAppIconImage;
+@property (class, readonly) NSImage *VividockStatusBarIconImage;
 
 // Sidebar images
 @property (class, readonly) NSImage *VLCSidebarMovieImage;

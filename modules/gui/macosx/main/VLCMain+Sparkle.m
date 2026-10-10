@@ -33,9 +33,6 @@
 #import "playqueue/VLCPlayQueueController.h"
 #import "playqueue/VLCPlayerController.h"
 
-NSString *const kIntel64UpdateURLString = @"https://update.videolan.org/vlc/sparkle/vlc-intel64.xml";
-NSString *const kARM64UpdateURLString = @"https://update.videolan.org/vlc/sparkle/vlc-arm64.xml";
-
 @interface VLCMain () <SPUUpdaterDelegate>
 @property (readwrite) SPUStandardUpdaterController *sparkleUpdaterController;
 @end
@@ -44,8 +41,9 @@ NSString *const kARM64UpdateURLString = @"https://update.videolan.org/vlc/sparkl
 
 - (void)setupSparkle
 {
-    self.sparkleUpdaterController = [[SPUStandardUpdaterController alloc]
-        initWithStartingUpdater:YES updaterDelegate:self userDriverDelegate:nil];
+    /* Vividock does not have a signed update feed yet. Keep the integration
+     * available for a future feed, but do not start the VLC updater. */
+    self.sparkleUpdaterController = nil;
 }
 
 /* received directly before the update gets installed, so let's shut down a bit */
@@ -70,22 +68,10 @@ NSString *const kARM64UpdateURLString = @"https://update.videolan.org/vlc/sparkl
     return YES;
 }
 
-/* use the correct feed depending on the hardware architecture */
+/* Vividock must not use VideoLAN's official VLC update feed. */
 - (nullable NSString *)feedURLStringForUpdater:(SPUUpdater *)updater
 {
-#ifdef __x86_64__
-    if (OSX_BIGSUR_AND_HIGHER) {
-        if ([self processIsTranslated] > 0) {
-            msg_Dbg(getIntf(), "Process is translated. On update, VLC will install the native ARM-64 binary.");
-            return kARM64UpdateURLString;
-        }
-    }
-    return kIntel64UpdateURLString;
-#elif __arm64__
-    return kARM64UpdateURLString;
-#else
-    #error unsupported architecture
-#endif
+    return nil;
 }
 
 - (void)updaterDidNotFindUpdate:(SPUUpdater *)updater error:(NSError *)error

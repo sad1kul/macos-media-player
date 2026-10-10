@@ -31,7 +31,7 @@ usage()
 cat << EOF
 usage: $0 [options]
 
-Sign VLC.app in the current directory
+Sign a VLC-based app bundle in the current directory
 
 OPTIONS:
    -h            Show this help
@@ -65,6 +65,8 @@ do
      esac
 done
 shift $(($OPTIND - 1))
+
+APP_BUNDLE="${VLC_APP_BUNDLE:-VLC.app}"
 
 if [ "x$1" != "x" ]; then
     usage
@@ -104,71 +106,71 @@ sign()
 
 
 info "Cleaning frameworks"
-find VLC.app/Contents/Frameworks -type f -name ".DS_Store" -exec rm '{}' \;
-find VLC.app/Contents/Frameworks -type f -name "*.textile" -exec rm '{}' \;
-find VLC.app/Contents/Frameworks -type f -name "*.txt" -exec rm '{}' \;
+find "$APP_BUNDLE/Contents/Frameworks" -type f -name ".DS_Store" -exec rm '{}' \;
+find "$APP_BUNDLE/Contents/Frameworks" -type f -name "*.textile" -exec rm '{}' \;
+find "$APP_BUNDLE/Contents/Frameworks" -type f -name "*.txt" -exec rm '{}' \;
 
 info "Signing frameworks"
 
-sign "VLC.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
-sign "VLC.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
-sign "VLC.app/Contents/Frameworks/Sparkle.framework/"
+sign "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
+sign "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
+sign "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework/"
 
-if [ -e "VLC.app/Contents/Frameworks/Breakpad.framework" ]; then
-    sign "VLC.app/Contents/Frameworks/Breakpad.framework/Resources/breakpadUtilities.dylib"
-    sign "VLC.app/Contents/Frameworks/Breakpad.framework/Resources/Inspector"
-    sign "VLC.app/Contents/Frameworks/Breakpad.framework/Resources/crash_report_sender.app"
-    sign "VLC.app/Contents/Frameworks/Breakpad.framework/Versions/A"
+if [ -e "$APP_BUNDLE/Contents/Frameworks/Breakpad.framework" ]; then
+    sign "$APP_BUNDLE/Contents/Frameworks/Breakpad.framework/Resources/breakpadUtilities.dylib"
+    sign "$APP_BUNDLE/Contents/Frameworks/Breakpad.framework/Resources/Inspector"
+    sign "$APP_BUNDLE/Contents/Frameworks/Breakpad.framework/Resources/crash_report_sender.app"
+    sign "$APP_BUNDLE/Contents/Frameworks/Breakpad.framework/Versions/A"
 fi
 
 info "Signing the modules"
 
-for i in $(find VLC.app/Contents/Frameworks/plugins -type f \( -name "*.dylib" -o -name "*.jar" \)  -exec echo {} \;)
+for i in $(find "$APP_BUNDLE/Contents/Frameworks/plugins" -type f \( -name "*.dylib" -o -name "*.jar" \)  -exec echo {} \;)
 do
     sign "$i"
 done
 
 if [ ! -z "$VLCCACHEGEN" ]; then
-    $VLCCACHEGEN VLC.app/Contents/Frameworks/plugins
-    sign "VLC.app/Contents/Frameworks/plugins/plugins.dat"
+    $VLCCACHEGEN "$APP_BUNDLE/Contents/Frameworks/plugins"
+    sign "$APP_BUNDLE/Contents/Frameworks/plugins/plugins.dat"
 else
-    rm "VLC.app/Contents/Frameworks/plugins/plugins.dat" || true
+    rm "$APP_BUNDLE/Contents/Frameworks/plugins/plugins.dat" || true
 fi
 
 info "Signing the libraries"
 
-for i in $(find VLC.app/Contents/Frameworks -type f -name "*.dylib" -d 1 -exec echo {} \;)
+for i in $(find "$APP_BUNDLE/Contents/Frameworks" -type f -name "*.dylib" -d 1 -exec echo {} \;)
 do
     sign "$i"
 done
 
-for i in $(find VLC.app/Contents/Frameworks/lua -type f -exec echo {} \;)
+for i in $(find "$APP_BUNDLE/Contents/Frameworks/lua" -type f -exec echo {} \;)
 do
     sign "$i"
 done
 
 info "Signing the executables"
-sign "VLC.app/Contents/MacOS/vlc-preparser"
-sign "VLC.app"
+sign "$APP_BUNDLE/Contents/MacOS/vlc-preparser"
+sign "$APP_BUNDLE"
 
 
 info "all items signed, validating..."
 
 info "Validating frameworks"
-if [ -e "VLC.app/Contents/Frameworks/Breakpad.framework" ]; then
-    codesign --verify -vv VLC.app/Contents/Frameworks/Breakpad.framework
+if [ -e "$APP_BUNDLE/Contents/Frameworks/Breakpad.framework" ]; then
+    codesign --verify -vv "$APP_BUNDLE/Contents/Frameworks/Breakpad.framework"
 fi
 
-codesign --verify -vv VLC.app/Contents/Frameworks/Sparkle.framework
+codesign --verify -vv "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
 
 info "Validating autoupdate app"
-codesign --verify -vv VLC.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Updater.app
+codesign --verify -vv "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework/Versions/Current/Updater.app"
 
 info "Validating complete bundle"
-codesign --verify --deep --strict --verbose=4 VLC.app
+codesign --verify --deep --strict --verbose=4 "$APP_BUNDLE"
 
 if [ ! -z "$GK" ]; then
-    spctl -a -t exec -vv VLC.app
+    spctl -a -t exec -vv "$APP_BUNDLE"
 fi
 
 

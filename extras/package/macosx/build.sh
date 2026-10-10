@@ -281,26 +281,26 @@ fi
 info "Running make -j$JOBS"
 make -j$JOBS
 
-info "Preparing VLC.app"
-make VLC.app
+info "Preparing Vividock.app"
+make Vividock.app
 
 if [ "$PACKAGETYPE" = "u" ]; then
-    info "Copying app with debug symbols into VLC-debug.app and stripping"
-    rm -rf VLC-debug.app
-    cp -Rp VLC.app VLC-debug.app
+    info "Copying app with debug symbols into Vividock-debug.app and stripping"
+    rm -rf Vividock-debug.app
+    cp -Rp Vividock.app Vividock-debug.app
 
     # Workaround for breakpad symbol parsing:
     # Symbols must be uploaded for libvlc(core).dylib, not libvlc(core).x.dylib
-    (cd VLC-debug.app/Contents/MacOS/lib/ && rm libvlccore.dylib && mv libvlccore.*.dylib libvlccore.dylib)
-    (cd VLC-debug.app/Contents/MacOS/lib/ && rm libvlc.dylib && mv libvlc.*.dylib libvlc.dylib)
+    (cd Vividock-debug.app/Contents/MacOS/lib/ && rm libvlccore.dylib && mv libvlccore.*.dylib libvlccore.dylib)
+    (cd Vividock-debug.app/Contents/MacOS/lib/ && rm libvlc.dylib && mv libvlc.*.dylib libvlc.dylib)
 
-    find VLC.app/ -name "*.dylib" -exec strip -x {} \;
-    find VLC.app/ -type f -name "VLC" -exec strip -x {} \;
-    find VLC.app/ -type f -name "Sparkle" -exec strip -x {} \;
-    find VLC.app/ -type f -name "Breakpad" -exec strip -x {} \;
+    find Vividock.app/ -name "*.dylib" -exec strip -x {} \;
+    find Vividock.app/ -type f -name "VLC" -exec strip -x {} \;
+    find Vividock.app/ -type f -name "Sparkle" -exec strip -x {} \;
+    find Vividock.app/ -type f -name "Breakpad" -exec strip -x {} \;
 
     if [ "$BUILD_TRIPLET" = "$HOST_TRIPLET" ]; then
-        bin/vlc-cache-gen VLC.app/Contents/Frameworks/plugins
+        bin/vlc-cache-gen Vividock.app/Contents/Frameworks/plugins
     fi
 
     info "Building VLC release archive"

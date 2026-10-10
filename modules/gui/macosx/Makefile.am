@@ -643,6 +643,7 @@ endif
 libmacosx_plugin_la_RES = \
 	gui/macosx/Resources/App-Icons/VLC-Xmas.icns \
 	gui/macosx/Resources/App-Icons/VLC.icns \
+	gui/macosx/Resources/App-Icons/Vividock.icns \
 	gui/macosx/Resources/File-Icons/aiff.icns \
 	gui/macosx/Resources/File-Icons/audio.icns \
 	gui/macosx/Resources/File-Icons/avi.icns \
@@ -830,6 +831,7 @@ libmacosx_plugin_la_RES = \
 	gui/macosx/Resources/Button-Icons/VLCPreviousTemplate.pdf \
 	gui/macosx/Resources/Button-Icons/VLCShuffleTemplate.pdf \
 	gui/macosx/Resources/Button-Icons/VLCStatusBarIcon.pdf \
+	gui/macosx/Resources/Button-Icons/VividockStatusBarIcon.pdf \
 	gui/macosx/Resources/Button-Icons/VLCBackwardTemplate.pdf \
 	gui/macosx/Resources/Button-Icons/VLCForwardTemplate.pdf \
 	gui/macosx/Resources/Button-Icons/VLCFullscreenOnTemplate.pdf \

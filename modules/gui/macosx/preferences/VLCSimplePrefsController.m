@@ -198,15 +198,8 @@ static NSString* VLCHotkeysSettingToolbarIdentifier = @"Hotkeys Settings Item Id
 {
     [self initStrings];
 
-#ifdef HAVE_SPARKLE
-    [_intf_updateCheckbox bind:@"value"
-                   toObject:VLCMain.sharedInstance.sparkleUpdaterController.updater
-                withKeyPath:@"automaticallyChecksForUpdates"
-                    options:nil];
-#else
     [_intf_updateCheckbox setState:NSOffState];
     [_intf_updateCheckbox setEnabled:NO];
-#endif
 
     /* setup the toolbar */
     NSToolbar * toolbar = [[NSToolbar alloc] initWithIdentifier: VLCSPrefsToolbarIdentifier];
@@ -413,7 +406,7 @@ create_toolbar_item(NSString *itemIdent, NSString *name, NSString *desc, NSStrin
     [_intf_playbackControlBox setTitle:_NS("Playback control")];
     [_intf_continueplaybackLabel setStringValue:_NS("Continue playback")];
     [_intf_displayEndOfPlaybackViewCheckBox setTitle:_NS("Display end of playback view")];
-    [_intf_statusIconCheckbox setTitle: _NS("Display VLC status menu icon")];
+    [_intf_statusIconCheckbox setTitle: _NS("Display Vividock status menu icon")];
     [_intf_displayTrackNumberPlayQueueCheckBox setTitle: _NS("Display album track numbers in play queue")];
 
     [_intf_playbackBehaviourBox setTitle:_NS("Playback behaviour")];
@@ -654,13 +647,7 @@ create_toolbar_item(NSString *itemIdent, NSString *name, NSString *desc, NSStrin
     [self setupButton:_intf_artCheckbox forBoolValue: "metadata-network-access"];
 
 
-#ifdef HAVE_SPARKLE
-    NSDate * const lastUpdateCheckDate = VLCMain.sharedInstance.sparkleUpdaterController.updater.lastUpdateCheckDate;
-    if (lastUpdateCheckDate != NULL)
-        [_intf_last_updateLabel setStringValue: [NSString stringWithFormat: _NS("Last check on: %@"), [lastUpdateCheckDate descriptionWithLocale: [[NSUserDefaults standardUserDefaults] dictionaryRepresentation]]]];
-    else
-        [_intf_last_updateLabel setStringValue: _NS("No check was performed yet.")];
-#endif
+    [_intf_last_updateLabel setHidden:YES];
 
     BOOL growlEnabled = [self hasModule:@"growl" inConfig:@"control"];
     [_intf_enableNotificationsCheckbox setState: growlEnabled ? NSOnState : NSOffState];
@@ -902,7 +889,7 @@ create_toolbar_item(NSString *itemIdent, NSString *name, NSString *desc, NSStrin
     NSAlert *alert = [[NSAlert alloc] init];
     [alert setAlertStyle:NSAlertStyleInformational];
     [alert setMessageText:_NS("Reset Preferences")];
-    [alert setInformativeText:_NS("This will reset VLC media player's preferences.\n\n"
+    [alert setInformativeText:_NS("This will reset Vividock's preferences.\n\n"
                                   "Note that VLC will restart during the process, so your current "
                                   "play queue will be emptied and eventual playback, streaming or "
                                   "transcoding activities will stop immediately.\n\n"
