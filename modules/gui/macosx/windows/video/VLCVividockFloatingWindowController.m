@@ -81,6 +81,32 @@
 @end
 
 
+@interface VLCVividockSeekSlider : NSSlider
+
+@property (nonatomic, copy) void (^trackingBeganHandler)(void);
+@property (nonatomic, copy) void (^trackingEndedHandler)(void);
+
+@end
+
+
+@implementation VLCVividockSeekSlider
+
+- (void)mouseDown:(NSEvent *)event
+{
+    if (self.trackingBeganHandler) {
+        self.trackingBeganHandler();
+    }
+
+    [super mouseDown:event];
+
+    if (self.trackingEndedHandler) {
+        self.trackingEndedHandler();
+    }
+}
+
+@end
+
+
 @interface VLCVividockFloatingWindowController () <NSWindowDelegate>
 {
     VLCPlayerController *_playerController;
@@ -194,7 +220,7 @@
     _returnControlsView = [self glassButtonViewContainingButton:_returnButton diameter:34.];
     [contentView addSubview:_returnControlsView];
 
-    _backwardButton = [self transportButtonWithFallbackTitle:@"↶ 5"
+    _backwardButton = [self transportButtonWithFallbackTitle:@"↶⑤"
                                                   symbolName:@"gobackward.5"
                                                      toolTip:_NS("Back 5 seconds")
                                                       action:@selector(backward:)];
@@ -202,7 +228,7 @@
                                                    symbolName:@"play.fill"
                                                       toolTip:_NS("Play")
                                                        action:@selector(togglePlayPause:)];
-    _forwardButton = [self transportButtonWithFallbackTitle:@"5 ↷"
+    _forwardButton = [self transportButtonWithFallbackTitle:@"⑤↷"
                                                  symbolName:@"goforward.5"
                                                     toolTip:_NS("Forward 5 seconds")
                                                      action:@selector(forward:)];
@@ -228,15 +254,36 @@
     _elapsedTimeField = [self timeField];
     _elapsedTimeField.alignment = NSTextAlignmentRight;
 
-    _seekSlider = [NSSlider sliderWithValue:0.
-                                      minValue:0.
-                                      maxValue:1.
-                                        target:self
-                                        action:@selector(seek:)];
+    _seekSlider = [[VLCVividockSeekSlider alloc] initWithFrame:NSZeroRect];
+    _seekSlider.minValue = 0.;
+    _seekSlider.maxValue = 1.;
+    _seekSlider.target = self;
+    _seekSlider.action = @selector(seek:);
     _seekSlider.translatesAutoresizingMaskIntoConstraints = NO;
     _seekSlider.continuous = YES;
     _seekSlider.controlSize = NSControlSizeSmall;
     _seekSlider.accessibilityLabel = _NS("Playback position");
+
+    VLCVividockSeekSlider * const seekSlider = (VLCVividockSeekSlider *)_seekSlider;
+    seekSlider.trackingBeganHandler = ^{
+        typeof(self) strongSelf = weakSelf;
+        if (strongSelf == nil) {
+            return;
+        }
+        strongSelf->_seekSliderIsBeingDragged = YES;
+        [strongSelf showControlsTemporarily];
+    };
+    seekSlider.trackingEndedHandler = ^{
+        typeof(self) strongSelf = weakSelf;
+        if (strongSelf == nil) {
+            return;
+        }
+        if (strongSelf->_playerController.seekable) {
+            [strongSelf->_playerController setPositionPrecise:strongSelf->_seekSlider.floatValue];
+        }
+        strongSelf->_seekSliderIsBeingDragged = NO;
+        [strongSelf showControlsTemporarily];
+    };
 
     _durationField = [self timeField];
     _durationField.alignment = NSTextAlignmentLeft;
@@ -323,6 +370,7 @@
     button.bordered = NO;
     button.font = [NSFont systemFontOfSize:13. weight:NSFontWeightSemibold];
     button.toolTip = toolTip;
+    button.accessibilityLabel = toolTip;
 
     if (@available(macOS 10.14, *)) {
         button.contentTintColor = NSColor.whiteColor;
@@ -446,17 +494,19 @@
     }
 
     const vlc_tick_t currentTime = _playerController.time;
-    const vlc_tick_t duration = _playerController.durationOfCurrentMediaItem;
-    if (currentTime == VLC_TICK_INVALID || duration <= 0) {
+    if (currentTime == VLC_TICK_INVALID) {
         return;
     }
 
+    const vlc_tick_t duration = _playerController.durationOfCurrentMediaItem;
     const vlc_tick_t interval = VLC_TICK_FROM_SEC(5);
     vlc_tick_t targetTime;
     if (seconds < 0) {
         targetTime = currentTime > interval ? currentTime - interval : 0;
-    } else {
+    } else if (duration > 0) {
         targetTime = currentTime < duration - interval ? currentTime + interval : duration;
+    } else {
+        targetTime = currentTime + interval;
     }
     [_playerController setTimePrecise:targetTime];
 }
@@ -480,19 +530,10 @@
         return;
     }
 
-    switch (NSApp.currentEvent.type) {
-        case NSEventTypeLeftMouseDown:
-        case NSEventTypeLeftMouseDragged:
-            _seekSliderIsBeingDragged = YES;
-            [_playerController setPositionFast:sender.floatValue];
-            break;
-        case NSEventTypeLeftMouseUp:
-            [_playerController setPositionPrecise:sender.floatValue];
-            _seekSliderIsBeingDragged = NO;
-            break;
-        default:
-            [_playerController setPositionFast:sender.floatValue];
-            break;
+    if (_seekSliderIsBeingDragged) {
+        [_playerController setPositionFast:sender.floatValue];
+    } else {
+        [_playerController setPositionPrecise:sender.floatValue];
     }
 }
 
