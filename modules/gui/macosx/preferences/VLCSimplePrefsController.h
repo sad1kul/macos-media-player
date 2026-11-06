@@ -66,7 +66,7 @@
 @property (readwrite, weak) IBOutlet NSTableColumn *mediaLibraryPathTableColumn;
 @property (readwrite, weak) IBOutlet NSTableColumn *mediaLibraryPresentTableColumn;
 @property (readwrite, weak) IBOutlet NSTableColumn *mediaLibraryBannedTableColumn;
-@property (readwrite, weak) IBOutlet NSButton *mediaLibraryAddFolderButton;
+@property (readwrite, weak) IBOutlet NSPopUpButton *mediaLibraryAddFolderButton;
 @property (readwrite, weak) IBOutlet NSButton *mediaLibraryRemoveFolderButton;
 @property (readwrite, weak) IBOutlet NSButton *mediaLibraryBanFolderButton;
 @property (readwrite, weak) IBOutlet NSButton *mediaLibraryReloadFolderButton;

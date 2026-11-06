@@ -438,7 +438,7 @@ typedef int (*folder_action_f)(vlc_medialibrary_t*, const char*);
 
 - (BOOL)shouldUseMediaLibrary
 {
-    return module_exists("medialibrary") && var_InheritBool(getIntf(), "media-library");
+    return var_InheritBool(getIntf(), "media-library");
 }
 
 @end

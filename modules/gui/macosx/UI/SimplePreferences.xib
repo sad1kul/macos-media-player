@@ -3065,13 +3065,14 @@ Gw
                         <autoresizingMask key="autoresizingMask"/>
                     </tableHeaderView>
                 </scrollView>
-                <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="AsR-G7-aHo">
-                    <rect key="frame" x="13" y="13" width="111" height="32"/>
-                    <buttonCell key="cell" type="push" title="Add Folder..." bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="TE0-DV-iku">
-                        <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                <popUpButton verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="AsR-G7-aHo">
+                    <rect key="frame" x="13" y="13" width="170" height="32"/>
+                    <popUpButtonCell key="cell" type="push" title="Add Media Folder" bezelStyle="rounded" lineBreakMode="truncatingTail" borderStyle="borderAndBezel" inset="2" arrowPosition="arrowAtCenter" preferredEdge="maxY" id="TE0-DV-iku">
+                        <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
                         <font key="font" metaFont="system"/>
-                    </buttonCell>
-                </button>
+                        <menu key="menu" title="Add Media Folder" id="L6K-qJ-0nJ"/>
+                    </popUpButtonCell>
+                </popUpButton>
                 <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="WnC-lv-27l">
                     <rect key="frame" x="122" y="13" width="125" height="32"/>
                     <buttonCell key="cell" type="push" title="Remove Folder" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="5lO-dg-v02">

@@ -153,7 +153,9 @@ static NSString* VLCHotkeysSettingToolbarIdentifier = @"Hotkeys Settings Item Id
 @property (readwrite, weak) NSButton *banFolderButton;
 @property (readwrite, weak) NSButton *reloadFolderButton;
 
-- (IBAction)addFolder:(id)sender;
+- (IBAction)addMusicFolder:(id)sender;
+- (IBAction)addMoviesFolder:(id)sender;
+- (IBAction)chooseAnotherFolder:(id)sender;
 - (IBAction)removeFolder:(id)sender;
 - (IBAction)banFolder:(id)sender;
 - (IBAction)reloadFolder:(id)sender;
@@ -321,8 +323,18 @@ static NSString* VLCHotkeysSettingToolbarIdentifier = @"Hotkeys Settings Item Id
     _mediaLibraryManagementController.banFolderButton = _mediaLibraryBanFolderButton;
     _mediaLibraryManagementController.reloadFolderButton = _mediaLibraryReloadFolderButton;
 
-    _mediaLibraryAddFolderButton.target = _mediaLibraryManagementController;
-    _mediaLibraryAddFolderButton.action = @selector(addFolder:);
+    [_mediaLibraryAddFolderButton removeAllItems];
+    [_mediaLibraryAddFolderButton addItemWithTitle:_NS("Add Music Folder")];
+    _mediaLibraryAddFolderButton.lastItem.target = _mediaLibraryManagementController;
+    _mediaLibraryAddFolderButton.lastItem.action = @selector(addMusicFolder:);
+    [_mediaLibraryAddFolderButton addItemWithTitle:_NS("Add Movies Folder")];
+    _mediaLibraryAddFolderButton.lastItem.target = _mediaLibraryManagementController;
+    _mediaLibraryAddFolderButton.lastItem.action = @selector(addMoviesFolder:);
+    [_mediaLibraryAddFolderButton.menu addItem:[NSMenuItem separatorItem]];
+    [_mediaLibraryAddFolderButton addItemWithTitle:_NS("Choose Another Folder...")];
+    _mediaLibraryAddFolderButton.lastItem.target = _mediaLibraryManagementController;
+    _mediaLibraryAddFolderButton.lastItem.action = @selector(chooseAnotherFolder:);
+    _mediaLibraryAddFolderButton.toolTip = _NS("Choose a folder to monitor for media changes");
     _mediaLibraryBanFolderButton.target = _mediaLibraryManagementController;
     _mediaLibraryBanFolderButton.action = @selector(banFolder:);
     _mediaLibraryRemoveFolderButton.target = _mediaLibraryManagementController;
@@ -539,7 +551,6 @@ create_toolbar_item(NSString *itemIdent, NSString *name, NSString *desc, NSStrin
     [_video_videoBox setTitle: _NS("Video")];
 
     /* media library */
-    [_mediaLibraryAddFolderButton setTitle:_NS("Add Folder...")];
     [_mediaLibraryBanFolderButton setTitle:_NS("Ban Folder")];
     [_mediaLibraryRemoveFolderButton setTitle:_NS("Remove Folder")];
     [_mediaLibraryReloadFolderButton setTitle:_NS("Reload Folder")];
@@ -1677,22 +1688,107 @@ static inline void save_string_list(intf_thread_t * __unused p_intf, id object, 
     [self.banFolderButton setTitle:entryPoint.isBanned ? _NS("Unban Folder") : _NS("Ban Folder")];
 }
 
-- (IBAction)addFolder:(id)sender
+- (void)showFolderError:(NSString *)message
 {
-    NSOpenPanel *openPanel = [NSOpenPanel openPanel];
-    [openPanel setTitle:_NS("Add Folder")];
-    [openPanel setCanChooseFiles:NO];
-    [openPanel setCanChooseDirectories:YES];
-    [openPanel setAllowsMultipleSelection:YES];
+    NSAlert * const alert = [[NSAlert alloc] init];
+    alert.messageText = _NS("Unable to Add Folder");
+    alert.informativeText = message;
+    [alert runModal];
+}
 
-    NSModalResponse returnValue = [openPanel runModal];
+- (BOOL)isProtectedMediaPackage:(NSURL *)url
+{
+    NSString * const extension = url.pathExtension.lowercaseString;
+    return [extension isEqualToString:@"photolibrary"] ||
+           [extension isEqualToString:@"musiclibrary"] ||
+           [extension isEqualToString:@"app"];
+}
 
-    if (returnValue == NSModalResponseOK) {
-        NSArray *URLs = [openPanel URLs];
-        NSUInteger count = [URLs count];
-        for (NSUInteger i = 0; i < count ; i++) {
-            NSURL *url = URLs[i];
-            [_libraryController addFolderWithFileURL:url];
+- (BOOL)isDuplicateOrOverlappingFolder:(NSURL *)url
+{
+    NSString * const path = url.URLByResolvingSymlinksInPath.URLByStandardizingPath.path;
+    for (VLCMediaLibraryEntryPoint * const entryPoint in _cachedFolderList) {
+        NSURL * const entryPointURL = [NSURL URLWithString:entryPoint.MRL];
+        NSString * const entryPointPath = entryPointURL.URLByResolvingSymlinksInPath.URLByStandardizingPath.path;
+        if ([path isEqualToString:entryPointPath] ||
+            [path hasPrefix:[entryPointPath stringByAppendingString:@"/"]] ||
+            [entryPointPath hasPrefix:[path stringByAppendingString:@"/"]]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (void)addFolderURL:(NSURL *)url
+{
+    NSURL * const resolvedURL = url.URLByResolvingSymlinksInPath.URLByStandardizingPath;
+    if (!resolvedURL.hasDirectoryPath ||
+        ![NSFileManager.defaultManager isReadableFileAtPath:resolvedURL.path]) {
+        [self showFolderError:_NS("The selected folder is unavailable or Vividock does not have permission to read it.")];
+        return;
+    }
+    if ([self isProtectedMediaPackage:resolvedURL]) {
+        [self showFolderError:_NS("Photos libraries, Apple Music libraries, and application bundles cannot be indexed as media folders.")];
+        return;
+    }
+    if ([self isDuplicateOrOverlappingFolder:resolvedURL]) {
+        [self showFolderError:_NS("This folder, its parent, or one of its subfolders is already monitored.")];
+        return;
+    }
+
+    const int result = [_libraryController addFolderWithFileURL:resolvedURL];
+    if (result != VLC_SUCCESS) {
+        [self showFolderError:_NS("Vividock could not register this folder for media-library indexing.")];
+        return;
+    }
+
+    // Start the first discovery pass only after the user explicitly chooses a source.
+    if ([_libraryController reloadFolderWithFileURL:resolvedURL] != VLC_SUCCESS) {
+        [self showFolderError:_NS("The folder was registered, but its initial media scan could not start.")];
+    }
+}
+
+- (IBAction)addMusicFolder:(id)sender
+{
+    NSError *error = nil;
+    NSURL * const musicURL = [NSFileManager.defaultManager URLForDirectory:NSMusicDirectory
+                                                                   inDomain:NSUserDomainMask
+                                                          appropriateForURL:nil
+                                                                     create:NO
+                                                                      error:&error];
+    if (musicURL == nil) {
+        [self showFolderError:_NS("Your Music folder could not be located.")];
+        return;
+    }
+    [self addFolderURL:musicURL];
+}
+
+- (IBAction)addMoviesFolder:(id)sender
+{
+    NSError *error = nil;
+    NSURL * const moviesURL = [NSFileManager.defaultManager URLForDirectory:NSMoviesDirectory
+                                                                    inDomain:NSUserDomainMask
+                                                           appropriateForURL:nil
+                                                                      create:NO
+                                                                       error:&error];
+    if (moviesURL == nil) {
+        [self showFolderError:_NS("Your Movies folder could not be located.")];
+        return;
+    }
+    [self addFolderURL:moviesURL];
+}
+
+- (IBAction)chooseAnotherFolder:(id)sender
+{
+    NSOpenPanel * const openPanel = [NSOpenPanel openPanel];
+    openPanel.title = _NS("Choose a Folder to Index");
+    openPanel.canChooseFiles = NO;
+    openPanel.canChooseDirectories = YES;
+    openPanel.allowsMultipleSelection = YES;
+
+    if ([openPanel runModal] == NSModalResponseOK) {
+        for (NSURL * const url in openPanel.URLs) {
+            [self addFolderURL:url];
         }
     }
 }

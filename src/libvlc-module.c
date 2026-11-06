@@ -2162,7 +2162,7 @@ vlc_module_begin ()
 #ifdef HAVE_DBUS
     add_bool( "dbus", false, DBUS_TEXT, DBUS_LONGTEXT )
 #endif
-    add_bool( "media-library", false, ML_TEXT, ML_LONGTEXT )
+    add_bool( "media-library", true, ML_TEXT, ML_LONGTEXT )
     add_bool( "playlist-tree", false, PLTREE_TEXT, PLTREE_LONGTEXT )
 
     add_string( "open", "", OPEN_TEXT, OPEN_LONGTEXT )
