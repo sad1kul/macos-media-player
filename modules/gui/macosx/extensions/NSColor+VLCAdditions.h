@@ -24,6 +24,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+extern NSString * const VLCVividockAccentIdentifierNeonTeal;
+extern NSString * const VLCVividockAccentIdentifierElectricCyan;
+extern NSString * const VLCVividockAccentIdentifierSapphireBlue;
+extern NSString * const VLCVividockAccentIdentifierNeonGreen;
+extern NSString * const VLCVividockAccentDidChangeNotification;
+
 @interface NSColor (VLCAdditions)
 
 @property (class, readonly) NSColor *VLCAccentColor;
@@ -40,6 +46,17 @@ NS_ASSUME_NONNULL_BEGIN
 @property (class, readonly) NSColor *VLCLightSubtleBorderColor;
 @property (class, readonly) NSColor *VLCDarkSubtleBorderColor;
 @property (class, readonly) NSColor *VLCSubtleBorderColor;
+
+@property (class, readonly) NSArray<NSString *> *VLCVividockAccentIdentifiers;
+@property (class, readonly) NSString *VLCVividockSavedAccentIdentifier;
+@property (class, readonly) NSString *VLCVividockAccentIdentifier;
+@property (class, readonly) NSColor *VLCVividockAccentColor;
+
++ (NSString *)VLCVividockAccentNameForIdentifier:(NSString *)identifier;
++ (NSColor *)VLCVividockAccentColorForIdentifier:(NSString *)identifier;
++ (void)VLCPreviewVividockAccentIdentifier:(NSString *)identifier;
++ (void)VLCSaveVividockAccentIdentifier:(NSString *)identifier;
++ (void)VLCCancelVividockAccentPreview;
 
 @end
 

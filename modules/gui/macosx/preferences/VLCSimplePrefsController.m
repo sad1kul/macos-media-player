@@ -41,6 +41,7 @@
 #import <vlc_aout.h>
 
 #import "extensions/NSScreen+VLCAdditions.h"
+#import "extensions/NSColor+VLCAdditions.h"
 #import "extensions/NSString+Helpers.h"
 #import "extensions/NSFont+VLCAdditions.h"
 #import "main/VLCMain.h"
@@ -175,6 +176,8 @@ static NSString* VLCHotkeysSettingToolbarIdentifier = @"Hotkeys Settings Item Id
     NSMutableArray *_hotkeySettings;
     NSString *_keyInTransition;
     VLCMediaLibraryFolderManagementController *_mediaLibraryManagementController;
+    NSArray<NSButton *> *_vividockAccentButtons;
+    NSString *_selectedVividockAccentIdentifier;
 
     intf_thread_t *p_intf;
 }
@@ -227,6 +230,78 @@ static NSString* VLCHotkeysSettingToolbarIdentifier = @"Hotkeys Settings Item Id
     [clipView addConstraints:constraints];
 
     [self setupMediaLibraryControlInterface];
+    [self setupVividockAccentControls];
+}
+
+- (NSImage *)vividockSwatchImageWithColor:(NSColor *)color
+{
+    NSImage * const image = [[NSImage alloc] initWithSize:NSMakeSize(16., 16.)];
+    [image lockFocus];
+    NSBezierPath * const swatch = [NSBezierPath bezierPathWithOvalInRect:NSMakeRect(1., 1., 14., 14.)];
+    [color setFill];
+    [swatch fill];
+    [NSColor.gridColor setStroke];
+    swatch.lineWidth = 1.;
+    [swatch stroke];
+    [image unlockFocus];
+    return image;
+}
+
+- (void)setupVividockAccentControls
+{
+    [_intfView setFrameSize:NSMakeSize(NSWidth(_intfView.frame), NSHeight(_intfView.frame) + 80.)];
+
+    NSBox * const accentBox = [[NSBox alloc] initWithFrame:NSZeroRect];
+    accentBox.translatesAutoresizingMaskIntoConstraints = NO;
+    accentBox.title = _NS("Appearance / Accent Color");
+
+    NSMutableArray<NSButton *> * const buttons = [NSMutableArray array];
+    for (NSString * const identifier in NSColor.VLCVividockAccentIdentifiers) {
+        NSString * const name = [NSColor VLCVividockAccentNameForIdentifier:identifier];
+        NSButton * const button = [NSButton radioButtonWithTitle:name
+                                                         target:self
+                                                         action:@selector(vividockAccentChanged:)];
+        button.identifier = identifier;
+        button.image = [self vividockSwatchImageWithColor:[NSColor VLCVividockAccentColorForIdentifier:identifier]];
+        button.imagePosition = NSImageLeft;
+        button.toolTip = [NSString stringWithFormat:_NS("Use %@ for Vividock floating controls"), name];
+        button.accessibilityLabel = name;
+        button.accessibilityHelp = button.toolTip;
+        [buttons addObject:button];
+    }
+    _vividockAccentButtons = buttons;
+
+    NSStackView * const stack = [NSStackView stackViewWithViews:buttons];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+    stack.distribution = NSStackViewDistributionFillEqually;
+    stack.spacing = 8.;
+    [accentBox.contentView addSubview:stack];
+    [_intfView addSubview:accentBox];
+
+    NSLayoutConstraint *generalTopConstraint;
+    for (NSLayoutConstraint * const constraint in _intfView.constraints) {
+        if (constraint.firstItem == _intf_generalSettingsBox &&
+            constraint.firstAttribute == NSLayoutAttributeTop &&
+            constraint.secondItem == _intfView) {
+            generalTopConstraint = constraint;
+            break;
+        }
+    }
+    if (generalTopConstraint != nil)
+        generalTopConstraint.active = NO;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [accentBox.topAnchor constraintEqualToAnchor:_intfView.topAnchor constant:21.],
+        [accentBox.leadingAnchor constraintEqualToAnchor:_intf_generalSettingsBox.leadingAnchor],
+        [accentBox.trailingAnchor constraintEqualToAnchor:_intf_generalSettingsBox.trailingAnchor],
+        [accentBox.heightAnchor constraintEqualToConstant:72.],
+        [_intf_generalSettingsBox.topAnchor constraintEqualToAnchor:accentBox.bottomAnchor constant:8.],
+        [stack.leadingAnchor constraintEqualToAnchor:accentBox.contentView.leadingAnchor constant:12.],
+        [stack.trailingAnchor constraintEqualToAnchor:accentBox.contentView.trailingAnchor constant:-12.],
+        [stack.topAnchor constraintEqualToAnchor:accentBox.contentView.topAnchor constant:9.],
+        [stack.bottomAnchor constraintEqualToAnchor:accentBox.contentView.bottomAnchor constant:-9.],
+    ]];
 }
 
 - (void)setupMediaLibraryControlInterface
@@ -658,6 +733,12 @@ create_toolbar_item(NSString *itemIdent, NSString *name, NSString *desc, NSStrin
 
     [self setupField:_intf_luahttppwdTextField forOption: "http-password"];
 
+    _selectedVividockAccentIdentifier = NSColor.VLCVividockSavedAccentIdentifier;
+    [NSColor VLCCancelVividockAccentPreview];
+    for (NSButton * const button in _vividockAccentButtons)
+        button.state = [button.identifier isEqualToString:_selectedVividockAccentIdentifier]
+            ? NSControlStateValueOn : NSControlStateValueOff;
+
     /******************
      * audio settings *
      ******************/
@@ -871,6 +952,7 @@ create_toolbar_item(NSString *itemIdent, NSString *name, NSString *desc, NSStrin
 - (IBAction)buttonAction:(id)sender
 {
     if (sender == _cancelButton) {
+        [NSColor VLCCancelVividockAccentPreview];
         [[NSFontPanel sharedFontPanel] close];
         [self.window orderOut: sender];
     } else if (sender == _saveButton) {
@@ -957,6 +1039,7 @@ static inline void save_string_list(intf_thread_t * __unused p_intf, id object, 
     if (_intfSettingChanged) {
         NSUInteger index = [_intf_languagePopup indexOfSelectedItem];
         NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        [NSColor VLCSaveVividockAccentIdentifier:_selectedVividockAccentIdentifier];
         [defaults setObject:toNSStr(language_map[index].iso) forKey:@"language"];
         [VLCSimplePrefsController updateRightToLeftSettings];
 
@@ -1161,6 +1244,15 @@ static inline void save_string_list(intf_thread_t * __unused p_intf, id object, 
         _intf_luahttppwdTextField.enabled = [sender state] == NSOnState;
     }
 
+    _intfSettingChanged = YES;
+}
+
+- (void)vividockAccentChanged:(NSButton *)sender
+{
+    _selectedVividockAccentIdentifier = sender.identifier;
+    for (NSButton * const button in _vividockAccentButtons)
+        button.state = button == sender ? NSControlStateValueOn : NSControlStateValueOff;
+    [NSColor VLCPreviewVividockAccentIdentifier:_selectedVividockAccentIdentifier];
     _intfSettingChanged = YES;
 }
 

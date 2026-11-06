@@ -22,6 +22,8 @@
 
 #import "VLCLoadingOverlayView.h"
 
+#import "extensions/NSView+VLCAdditions.h"
+
 @implementation VLCLoadingOverlayView
 
 - (instancetype)init
@@ -54,7 +56,8 @@
 - (void)setup
 {
     self.blendingMode = NSVisualEffectBlendingModeWithinWindow;
-    self.material = NSVisualEffectMaterialPopover;
+    self.material = NSVisualEffectMaterialHUDWindow;
+    [self VLCApplyVividockGlassAccentRimWithCornerRadius:16.];
 
     _indicator = [[NSProgressIndicator alloc] initWithFrame:NSMakeRect(0, 0, 48, 48)];
     self.indicator.translatesAutoresizingMaskIntoConstraints = NO;

@@ -24,6 +24,7 @@
 
 #import "extensions/NSAnimationContext+VLCAdditions.h"
 #import "extensions/NSColor+VLCAdditions.h"
+#import "extensions/NSView+VLCAdditions.h"
 #import "extensions/NSWindow+VLCAdditions.h"
 
 #import "library/VLCLibraryController.h"
@@ -47,11 +48,126 @@
 // This needs to match whatever identifier has been set in the library window XIB
 static NSString * const VLCLibrarySegmentCellIdentifier = @"VLCLibrarySegmentCellIdentifier";
 
+/* AppKit source-list selection uses the system accent (orange here). Paint a
+ * frosted glass capsule instead so the row stays readable and navigable. */
+static NSString * const VLCVividockSidebarRowViewIdentifier = @"VLCVividockSidebarRowView";
+static NSString * const VLCVividockSelectionGlassIdentifier = @"VLCVividockSelectionGlass";
+
+static NSRect VLCVividockSidebarSelectionRect(NSRect bounds)
+{
+    /* Match AppKit source-list highlight: ~10pt side inset, ~2pt vertical. */
+    return NSInsetRect(bounds, 10., 2.);
+}
+
+@interface VLCVividockSidebarRowView : NSTableRowView
+@property (nonatomic) NSView *selectionGlassView;
+@end
+
+@implementation VLCVividockSidebarRowView
+
+- (NSBackgroundStyle)interiorBackgroundStyle
+{
+    return NSBackgroundStyleNormal;
+}
+
+- (void)drawBackgroundInRect:(NSRect)dirtyRect
+{
+}
+
+- (void)hideSystemSelectionChrome
+{
+    for (NSView * const subview in self.subviews) {
+        if ([subview isKindOfClass:NSTableCellView.class] ||
+            [subview.identifier isEqualToString:VLCVividockSelectionGlassIdentifier]) {
+            continue;
+        }
+        NSString * const className = NSStringFromClass(subview.class);
+        if ([className containsString:@"Glass"] ||
+            [className containsString:@"Selection"] ||
+            [className containsString:@"Highlight"] ||
+            [className containsString:@"Emphasiz"]) {
+            subview.hidden = YES;
+            subview.alphaValue = 0.;
+        }
+    }
+}
+
+- (void)updateSelectionGlass
+{
+    const NSRect pill = VLCVividockSidebarSelectionRect(self.bounds);
+
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000
+    if (@available(macOS 26.0, *)) {
+        if (self.selectionGlassView == nil) {
+            NSGlassEffectView * const glass = [[NSGlassEffectView alloc] initWithFrame:pill];
+            glass.identifier = VLCVividockSelectionGlassIdentifier;
+            glass.style = NSGlassEffectViewStyleClear;
+            glass.cornerRadius = 8.;
+            glass.tintColor = nil;
+            if (@available(macOS 27.0, *)) {
+                glass.effectIsInteractive = YES;
+            }
+            [self addSubview:glass positioned:NSWindowBelow relativeTo:nil];
+            self.selectionGlassView = glass;
+        }
+        self.selectionGlassView.frame = pill;
+        self.selectionGlassView.hidden = !self.selected;
+        return;
+    }
+#endif
+
+    self.selectionGlassView.hidden = YES;
+}
+
+- (void)drawSelectionInRect:(NSRect)dirtyRect
+{
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000
+    if (@available(macOS 26.0, *)) {
+        return;
+    }
+#endif
+    if (!self.selected) {
+        return;
+    }
+
+    const NSRect pill = VLCVividockSidebarSelectionRect(self.bounds);
+    NSBezierPath * const path = [NSBezierPath bezierPathWithRoundedRect:pill
+                                                                 xRadius:8.
+                                                                 yRadius:8.];
+    [[NSColor.whiteColor colorWithAlphaComponent:0.12] setFill];
+    [path fill];
+}
+
+- (void)setSelected:(BOOL)selected
+{
+    [super setSelected:selected];
+    [self hideSystemSelectionChrome];
+    [self updateSelectionGlass];
+    [self setNeedsDisplay:YES];
+}
+
+- (void)didAddSubview:(NSView *)subview
+{
+    [super didAddSubview:subview];
+    [self hideSystemSelectionChrome];
+}
+
+- (void)layout
+{
+    [super layout];
+    [self hideSystemSelectionChrome];
+    [self updateSelectionGlass];
+}
+
+@end
+
 @interface VLCLibraryWindowNavigationSidebarViewController ()
 
 @property BOOL ignoreSegmentSelectionChanges;
 @property (readonly) NSEdgeInsets scrollViewInsets;
 @property (readonly) NSMutableDictionary<NSString *, dispatch_source_t> *observedPathDispatchSources;
+
+- (void)updateSidebarSelectionAppearance;
 
 @end
 
@@ -82,6 +198,12 @@ static NSString * const VLCLibrarySegmentCellIdentifier = @"VLCLibrarySegmentCel
     self.outlineView.allowsEmptySelection = NO;
     self.outlineView.allowsColumnSelection = NO;
     self.outlineView.allowsColumnReordering = NO;
+    self.outlineView.selectionHighlightStyle = NSTableViewSelectionHighlightStyleNone;
+    self.outlineView.backgroundColor = NSColor.clearColor;
+    self.outlineViewScrollView.drawsBackground = NO;
+    self.view.wantsLayer = YES;
+    [self.view VLCInstallVividockGlassBackdropWithMaterial:NSVisualEffectMaterialSidebar
+                                              blendingMode:NSVisualEffectBlendingModeBehindWindow];
 
     [self internalNodesChanged:nil];
 
@@ -123,6 +245,15 @@ static NSString * const VLCLibrarySegmentCellIdentifier = @"VLCLibrarySegmentCel
                       selector:@selector(statusViewSizeChanged:)
                           name:NSViewFrameDidChangeNotification
                         object:nil];
+    [defaultCenter addObserver:self
+                      selector:@selector(vividockAccentChanged:)
+                          name:VLCVividockAccentDidChangeNotification
+                        object:nil];
+}
+
+- (void)vividockAccentChanged:(NSNotification *)notification
+{
+    [self updateSidebarSelectionAppearance];
 }
 
 - (void)internalNodesChanged:(NSNotification *)notification
@@ -360,7 +491,10 @@ static NSString * const VLCLibrarySegmentCellIdentifier = @"VLCLibrarySegmentCel
     [cellView.imageView bind:NSImageBinding toObject:cellView withKeyPath:@"objectValue.displayImage" options:nil];
 
     if (@available(macOS 10.14, *)) {
-        cellView.imageView.contentTintColor = NSColor.VLCAccentColor;
+        const NSInteger row = [outlineView rowForItem:item];
+        const BOOL selected = [outlineView.selectedRowIndexes containsIndex:row];
+        cellView.imageView.contentTintColor = NSColor.VLCVividockAccentColor;
+        cellView.textField.textColor = selected ? NSColor.VLCVividockAccentColor : NSColor.labelColor;
     }
 
     NSTreeNode * const treeNode = (NSTreeNode *)item;
@@ -433,6 +567,52 @@ static NSString * const VLCLibrarySegmentCellIdentifier = @"VLCLibrarySegmentCel
     
     // Refresh disclosure triangles when selection changes
     [(VLCLibraryWindowNavigationSidebarOutlineView *)self.outlineView refreshDisclosureCaret];
+    [self updateSidebarSelectionAppearance];
+}
+
+- (void)updateSidebarSelectionAppearance
+{
+    const NSInteger rowCount = self.outlineView.numberOfRows;
+    for (NSInteger row = 0; row < rowCount; row++) {
+        NSTableRowView * const rowView = [self.outlineView rowViewAtRow:row makeIfNecessary:NO];
+        [rowView setNeedsDisplay:YES];
+
+        NSTableCellView * const cellView = [self.outlineView viewAtColumn:0 row:row makeIfNecessary:NO];
+        if (cellView == nil) {
+            continue;
+        }
+
+        NSTreeNode * const treeNode = [self.outlineView itemAtRow:row];
+        VLCLibrarySegment * const segment = (VLCLibrarySegment *)treeNode.representedObject;
+        const BOOL mediaLibraryUnavailable =
+            segment.mediaLibraryRequired &&
+            VLCMain.sharedInstance.libraryController.libraryModel == nil;
+        if (mediaLibraryUnavailable) {
+            cellView.textField.textColor = NSColor.tertiaryLabelColor;
+            if (@available(macOS 10.14, *)) {
+                cellView.imageView.contentTintColor = NSColor.tertiaryLabelColor;
+            }
+            continue;
+        }
+
+        const BOOL selected = [self.outlineView.selectedRowIndexes containsIndex:row];
+        cellView.textField.textColor = selected ? NSColor.VLCVividockAccentColor : NSColor.labelColor;
+        if (@available(macOS 10.14, *)) {
+            cellView.imageView.contentTintColor = NSColor.VLCVividockAccentColor;
+        }
+    }
+    [self.outlineView setNeedsDisplay:YES];
+}
+
+- (NSTableRowView *)outlineView:(NSOutlineView *)outlineView
+              rowViewForItem:(id)item
+{
+    VLCVividockSidebarRowView *rowView = [outlineView makeViewWithIdentifier:VLCVividockSidebarRowViewIdentifier owner:self];
+    if (rowView == nil) {
+        rowView = [[VLCVividockSidebarRowView alloc] initWithFrame:NSZeroRect];
+        rowView.identifier = VLCVividockSidebarRowViewIdentifier;
+    }
+    return rowView;
 }
 
 - (BOOL)outlineView:(NSOutlineView*)outlineView isGroupItem:(id)item

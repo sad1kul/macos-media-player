@@ -117,6 +117,12 @@ NSString * const VLCLibraryHeaderViewIdentifier = @"VLCLibraryHeaderView";
     if (@available(macOS 26.0, *)) {
         NSGlassEffectView * const glassView = [[NSGlassEffectView alloc] initWithFrame:self.bounds];
         glassView.translatesAutoresizingMaskIntoConstraints = NO;
+        glassView.style = NSGlassEffectViewStyleClear;
+        glassView.tintColor = nil;
+        glassView.cornerRadius = 16.;
+        if (@available(macOS 27.0, *)) {
+            glassView.effectIsInteractive = YES;
+        }
         NSView * const glassContentView = [[NSView alloc] initWithFrame:glassView.bounds];
         glassContentView.translatesAutoresizingMaskIntoConstraints = NO;
         glassView.contentView = glassContentView;
@@ -129,8 +135,8 @@ NSString * const VLCLibraryHeaderViewIdentifier = @"VLCLibraryHeaderView";
         NSVisualEffectView * const visualEffectView = [[NSVisualEffectView alloc] initWithFrame:self.bounds];
         visualEffectView.translatesAutoresizingMaskIntoConstraints = NO;
         visualEffectView.wantsLayer = YES;
-        visualEffectView.material = NSVisualEffectMaterialPopover;
-        visualEffectView.blendingMode = NSVisualEffectBlendingModeWithinWindow;
+        visualEffectView.material = NSVisualEffectMaterialHUDWindow;
+        visualEffectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
         self.backgroundView = visualEffectView;
         contentHostView = visualEffectView;
     } else {

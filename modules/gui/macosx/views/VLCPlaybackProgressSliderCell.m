@@ -177,7 +177,7 @@ static CVReturn DisplayLinkCallback(CVDisplayLinkRef displayLink,
                                         xRadius:trackBorderRadius
                                         yRadius:trackBorderRadius];
 
-    [NSColor.VLCAccentColor setFill];
+    [NSColor.VLCVividockAccentColor setFill];
     [filledTrackPath fill];
 }
 

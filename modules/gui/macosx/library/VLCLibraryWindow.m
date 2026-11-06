@@ -114,6 +114,7 @@ NSString * const VLCLibraryWindowEmbeddedVideoPlaybackActiveKey = @"embeddedVide
 }
 
 @property NSTimer *searchInputTimer;
+@property NSImage *placeholderSourceImage;
 
 @end
 
@@ -205,6 +206,71 @@ static int ShowController(vlc_object_t * __unused p_this,
     [self setupLoadingOverlayView];
 
     self.librarySearchField.delegate = self;
+
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(vividockAccentChanged:)
+                                               name:VLCVividockAccentDidChangeNotification
+                                             object:nil];
+    [self applyVividockGlassChrome];
+    [self vividockAccentChanged:nil];
+}
+
+- (void)applyVividockGlassChrome
+{
+    self.titlebarAppearsTransparent = YES;
+    self.opaque = NO;
+    self.backgroundColor = NSColor.clearColor;
+    self.hasShadow = YES;
+    if (@available(macOS 11.0, *)) {
+        self.toolbarStyle = NSWindowToolbarStyleUnified;
+    }
+    self.contentView.wantsLayer = YES;
+    self.contentView.layer.backgroundColor = NSColor.clearColor.CGColor;
+
+    NSVisualEffectMaterial backdropMaterial = NSVisualEffectMaterialAppearanceBased;
+    if (@available(macOS 10.14, *)) {
+        backdropMaterial = NSVisualEffectMaterialUnderWindowBackground;
+    }
+    [self.contentView VLCInstallVividockGlassBackdropWithMaterial:backdropMaterial
+                                                     blendingMode:NSVisualEffectBlendingModeBehindWindow];
+
+    self.libraryTargetView.wantsLayer = YES;
+    self.libraryTargetView.layer.backgroundColor = NSColor.clearColor.CGColor;
+    NSVisualEffectMaterial contentMaterial = NSVisualEffectMaterialAppearanceBased;
+    if (@available(macOS 10.14, *)) {
+        contentMaterial = NSVisualEffectMaterialContentBackground;
+    }
+    [self.libraryTargetView VLCInstallVividockGlassBackdropWithMaterial:contentMaterial
+                                                           blendingMode:NSVisualEffectBlendingModeWithinWindow];
+
+    [self.emptyLibraryView VLCInstallVividockGlassBackdropWithMaterial:NSVisualEffectMaterialHUDWindow
+                                                         blendingMode:NSVisualEffectBlendingModeWithinWindow];
+}
+
+- (void)disableVideoTitleBarMode
+{
+    [super disableVideoTitleBarMode];
+    self.titlebarAppearsTransparent = YES;
+    self.opaque = NO;
+    self.backgroundColor = NSColor.clearColor;
+}
+
+- (void)vividockAccentChanged:(NSNotification *)notification
+{
+    NSColor * const accent = NSColor.VLCVividockAccentColor;
+    NSButton * const browseButton = (NSButton *)self.placeholderGoToBrowseButton;
+    browseButton.contentTintColor = accent;
+    if (@available(macOS 26.0, *)) {
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000
+        browseButton.bordered = YES;
+        browseButton.bezelStyle = NSBezelStyleGlass;
+        browseButton.borderShape = NSControlBorderShapeCapsule;
+#endif
+    }
+    if (self.placeholderSourceImage != nil) {
+        self.placeholderImageView.image = [self.placeholderSourceImage imageTintedWithColor:accent];
+    }
+    [self.contentView VLCUpdateVividockGoldenGateGlassTint];
 }
 
 - (void)dealloc
@@ -355,7 +421,8 @@ static int ShowController(vlc_object_t * __unused p_this,
     }
 
     [self displayLibraryView:self.emptyLibraryView];
-    self.placeholderImageView.image = image;
+    self.placeholderSourceImage = image;
+    self.placeholderImageView.image = [image imageTintedWithColor:NSColor.VLCVividockAccentColor];
     self.placeholderLabel.stringValue = message;
 }
 

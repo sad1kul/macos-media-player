@@ -24,6 +24,10 @@
 #import "NSView+VLCAdditions.h"
 
 #import "NSAppearance+VLCAdditions.h"
+#import "NSColor+VLCAdditions.h"
+
+static NSString * const VLCVividockGlassBackdropIdentifier = @"VLCVividockGlassBackdrop";
+static NSString * const VLCVividockGoldenGateGlassIdentifier = @"VLCVividockGoldenGateGlass";
 
 @implementation NSView (VLCAdditions)
 
@@ -96,6 +100,95 @@
         [NSLayoutConstraint activateConstraints:constraints];
     }
     return constraints;
+}
+
+- (NSView *)VLCInstallVividockGlassBackdropWithMaterial:(NSVisualEffectMaterial)material
+                                           blendingMode:(NSVisualEffectBlendingMode)blendingMode
+{
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000
+    if (@available(macOS 26.0, *)) {
+        for (NSView * const subview in self.subviews) {
+            if ([subview.identifier isEqualToString:VLCVividockGoldenGateGlassIdentifier]) {
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000
+                if ([subview isKindOfClass:NSGlassEffectView.class]) {
+                    NSGlassEffectView * const glass = (NSGlassEffectView *)subview;
+                    glass.tintColor = nil;
+                    return glass;
+                }
+#endif
+            }
+        }
+
+        const BOOL hudLike = material == NSVisualEffectMaterialHUDWindow;
+        const BOOL sidebarLike = material == NSVisualEffectMaterialSidebar;
+        const BOOL magnifyingGlass = hudLike || sidebarLike ||
+            blendingMode == NSVisualEffectBlendingModeBehindWindow;
+        NSGlassEffectView * const glass = [[NSGlassEffectView alloc] initWithFrame:self.bounds];
+        glass.identifier = VLCVividockGoldenGateGlassIdentifier;
+        glass.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        glass.style = magnifyingGlass ? NSGlassEffectViewStyleClear : NSGlassEffectViewStyleRegular;
+        glass.cornerRadius = hudLike ? 22. : 0.;
+        glass.tintColor = nil;
+        if (@available(macOS 27.0, *)) {
+            glass.effectIsInteractive = hudLike || sidebarLike;
+        }
+        [self addSubview:glass positioned:NSWindowBelow relativeTo:nil];
+        return glass;
+    }
+#endif
+
+    for (NSView * const subview in self.subviews) {
+        if ([subview.identifier isEqualToString:VLCVividockGlassBackdropIdentifier] &&
+            [subview isKindOfClass:NSVisualEffectView.class]) {
+            NSVisualEffectView * const backdrop = (NSVisualEffectView *)subview;
+            backdrop.material = material;
+            backdrop.blendingMode = blendingMode;
+            backdrop.state = NSVisualEffectStateActive;
+            return backdrop;
+        }
+    }
+
+    NSVisualEffectView * const backdrop = [[NSVisualEffectView alloc] initWithFrame:self.bounds];
+    backdrop.identifier = VLCVividockGlassBackdropIdentifier;
+    backdrop.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    backdrop.blendingMode = blendingMode;
+    backdrop.material = material;
+    backdrop.state = NSVisualEffectStateActive;
+    backdrop.wantsLayer = YES;
+    [self addSubview:backdrop positioned:NSWindowBelow relativeTo:nil];
+    return backdrop;
+}
+
+- (void)VLCApplyVividockGlassAccentRimWithCornerRadius:(CGFloat)radius
+{
+    self.wantsLayer = YES;
+    self.layer.cornerRadius = radius;
+    self.layer.masksToBounds = YES;
+    self.layer.borderWidth = 1.;
+    self.layer.borderColor = [NSColor colorWithWhite:1. alpha:0.18].CGColor;
+}
+
+- (void)VLCUpdateVividockGlassAccentRim
+{
+    if (self.layer == nil || self.layer.borderWidth <= 0.) {
+        return;
+    }
+    self.layer.borderColor = [NSColor colorWithWhite:1. alpha:0.18].CGColor;
+}
+
+- (void)VLCUpdateVividockGoldenGateGlassTint
+{
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 260000
+    if (@available(macOS 26.0, *)) {
+        for (NSView * const subview in self.subviews) {
+            if ([subview.identifier isEqualToString:VLCVividockGoldenGateGlassIdentifier] &&
+                [subview isKindOfClass:NSGlassEffectView.class]) {
+                ((NSGlassEffectView *)subview).tintColor = nil;
+            }
+            [subview VLCUpdateVividockGoldenGateGlassTint];
+        }
+    }
+#endif
 }
 
 @end

@@ -36,6 +36,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray<NSLayoutConstraint *> *)constraintsToFillView:(NSView *)view activate:(BOOL)activate;
 - (NSArray<NSLayoutConstraint *> *)applyConstraintsToFillSuperview;
 
+- (NSView *)VLCInstallVividockGlassBackdropWithMaterial:(NSVisualEffectMaterial)material
+                                           blendingMode:(NSVisualEffectBlendingMode)blendingMode;
+- (void)VLCApplyVividockGlassAccentRimWithCornerRadius:(CGFloat)radius;
+- (void)VLCUpdateVividockGlassAccentRim;
+- (void)VLCUpdateVividockGoldenGateGlassTint;
+
 @end
 
 NS_ASSUME_NONNULL_END

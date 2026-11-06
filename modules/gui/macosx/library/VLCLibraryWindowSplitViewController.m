@@ -54,6 +54,7 @@
                        context:nil];
 
     self.splitView.wantsLayer = YES;
+    self.splitView.layer.backgroundColor = NSColor.clearColor.CGColor;
 
     _navSidebarViewController =
         [[VLCLibraryWindowNavigationSidebarViewController alloc] initWithLibraryWindow:VLCMain.sharedInstance.libraryWindow];
@@ -66,10 +67,12 @@
     _navSidebarItem = [NSSplitViewItem sidebarWithViewController:self.navSidebarViewController];
     _libraryTargetViewItem = [NSSplitViewItem splitViewItemWithViewController:self.libraryTargetViewController];
 
-    _multifunctionSidebarItem = [NSSplitViewItem splitViewItemWithViewController:self.multifunctionSidebarViewController];
-
     if (@available(macOS 11.0, *)) {
+        _multifunctionSidebarItem = [NSSplitViewItem inspectorWithViewController:self.multifunctionSidebarViewController];
         _navSidebarItem.allowsFullHeightLayout = YES;
+        _multifunctionSidebarItem.allowsFullHeightLayout = YES;
+    } else {
+        _multifunctionSidebarItem = [NSSplitViewItem splitViewItemWithViewController:self.multifunctionSidebarViewController];
     }
 
     _navSidebarItem.preferredThicknessFraction = 0.2;

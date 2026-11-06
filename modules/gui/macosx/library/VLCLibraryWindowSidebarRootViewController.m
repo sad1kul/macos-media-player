@@ -63,6 +63,9 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    self.view.wantsLayer = YES;
+    [self.view VLCInstallVividockGlassBackdropWithMaterial:NSVisualEffectMaterialSidebar
+                                              blendingMode:NSVisualEffectBlendingModeBehindWindow];
     [self setupPlayQueueTitle];
     [self setupCounterLabel];
 

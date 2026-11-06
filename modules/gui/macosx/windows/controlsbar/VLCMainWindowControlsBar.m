@@ -77,6 +77,11 @@
         glassEffectView.contentView = self.dropView;
         [glassEffectView applyConstraintsToFillSuperview];
         glassEffectView.cornerRadius = CGFLOAT_MAX;
+        glassEffectView.style = NSGlassEffectViewStyleRegular;
+        glassEffectView.tintColor = nil;
+        if (@available(macOS 27.0, *)) {
+            glassEffectView.effectIsInteractive = YES;
+        }
         self.bottomBarView.drawBorder = NO;
         self.bottomBarView.clipsToBounds = NO;
 #endif
@@ -84,8 +89,7 @@
         self.visualEffectView.wantsLayer = YES;
         self.visualEffectView.layer.cornerRadius = VLCUIUnits.cornerRadius;
         self.visualEffectView.layer.masksToBounds = YES;
-        self.visualEffectView.layer.borderWidth = VLCUIUnits.borderThickness;
-        self.visualEffectView.layer.borderColor = NSColor.VLCSubtleBorderColor.CGColor;
+        [self.visualEffectView VLCApplyVividockGlassAccentRimWithCornerRadius:VLCUIUnits.cornerRadius];
     }
 
     _playQueueController = VLCMain.sharedInstance.playQueueController;
@@ -138,6 +142,17 @@
                                         forKeyPath:@"effectiveAppearance"
                                             options:NSKeyValueObservingOptionNew
                                             context:nil];
+    }
+}
+
+- (void)vividockAccentChanged:(NSNotification *)notification
+{
+    [super vividockAccentChanged:notification];
+    if (@available(macOS 10.14, *)) {
+        NSColor * const accent = NSColor.VLCVividockAccentColor;
+        self.stopButton.contentTintColor = accent;
+        self.volumeUpButton.contentTintColor = accent;
+        self.favoriteButton.contentTintColor = accent;
     }
 }
 

@@ -85,7 +85,7 @@
                                                                       xRadius:cornerRadius 
                                                                       yRadius:cornerRadius];
     
-    [NSColor.VLCSubtleBorderColor setStroke];
+    [[NSColor colorWithWhite:1. alpha:0.16] setStroke];
     borderPath.lineWidth = VLCUIUnits.borderThickness;
     [borderPath stroke];
 }

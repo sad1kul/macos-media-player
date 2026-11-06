@@ -22,6 +22,8 @@
 
 #import "VLCLibraryWindowToolbarDelegate.h"
 
+#import "extensions/NSColor+VLCAdditions.h"
+#import "extensions/NSImage+VLCAdditions.h"
 #import "extensions/NSString+Helpers.h"
 
 #import "library/VLCLibraryWindow.h"
@@ -86,6 +88,40 @@ NSString * const VLCLibraryWindowTrackingSeparatorToolbarItemIdentifier =
     [VLCMain.sharedInstance.mainMenu.rendererMenuController startRendererDiscoveries];
 
     [self updatePlayqueueToggleState];
+
+    [notificationCenter addObserver:self
+                           selector:@selector(vividockAccentChanged:)
+                               name:VLCVividockAccentDidChangeNotification
+                             object:nil];
+    [self vividockAccentChanged:nil];
+}
+
+- (void)vividockAccentChanged:(NSNotification *)notification
+{
+    NSArray<NSToolbarItem *> * const accentItems = @[
+        self.toggleNavSidebarToolbarItem,
+        self.backwardsToolbarItem,
+        self.forwardsToolbarItem,
+        self.sortOrderToolbarItem,
+        self.togglePlayQueueToolbarItem,
+    ];
+    for (NSToolbarItem * const item in accentItems) {
+        if (item.image != nil) {
+            item.image = [item.image imageTintedWithColor:NSColor.VLCVividockAccentColor];
+            item.image.template = YES;
+        }
+    }
+
+    if ([self.libraryViewModeToolbarItem.view isKindOfClass:NSSegmentedControl.class]) {
+        NSSegmentedControl * const control = (NSSegmentedControl *)self.libraryViewModeToolbarItem.view;
+        for (NSInteger segment = 0; segment < control.segmentCount; segment++) {
+            NSImage * const image = [control imageForSegment:segment];
+            if (image != nil) {
+                [control setImage:[image imageTintedWithColor:NSColor.VLCVividockAccentColor]
+                    forSegment:segment];
+            }
+        }
+    }
 }
 
 #pragma mark - toolbar delegate methods

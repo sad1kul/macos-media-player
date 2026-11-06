@@ -94,7 +94,7 @@
             if (self.isHighlighted) {
                 [NSColor.VLCSubtleBorderColor set];
             } else {
-                [NSColor.VLCSubtlerAccentColor set];
+                [[NSColor.VLCVividockAccentColor colorWithAlphaComponent:0.8] set];
             }
             const NSRect imageRect = {NSZeroPoint, imageSize};
             [self.image drawInRect:imageRect];

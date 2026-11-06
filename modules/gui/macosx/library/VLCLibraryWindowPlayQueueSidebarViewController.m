@@ -79,6 +79,11 @@
     self.tableView.delegate = self.dataSource;
     self.tableView.rowHeight = VLCUIUnits.mediumTableViewRowHeight;
     [self.tableView reloadData];
+    self.tableView.backgroundColor = NSColor.clearColor;
+    self.scrollView.drawsBackground = NO;
+    self.view.wantsLayer = YES;
+    [self.view VLCInstallVividockGlassBackdropWithMaterial:NSVisualEffectMaterialSidebar
+                                              blendingMode:NSVisualEffectBlendingModeBehindWindow];
 
     self.openMediaButton.title = _NS("Open media...");
 
@@ -120,8 +125,21 @@
                            selector:@selector(repeatStateUpdated:)
                                name:VLCPlaybackRepeatChanged
                              object:nil];
+    [notificationCenter addObserver:self
+                           selector:@selector(vividockAccentChanged:)
+                               name:VLCVividockAccentDidChangeNotification
+                             object:nil];
 
     [self setupBlurredHeaderFooter];
+}
+
+- (void)vividockAccentChanged:(NSNotification *)notification
+{
+    [self shuffleStateUpdated:nil];
+    [self repeatStateUpdated:nil];
+    NSColor * const accent = NSColor.VLCVividockAccentColor;
+    self.sortButton.contentTintColor = accent;
+    self.clearButton.contentTintColor = accent;
 }
 
 - (void)setupScrollViewGradientMask
@@ -172,6 +190,11 @@
         self.footerContainerView.subviews = @[glassFooterView];
         self.footerContainerView.clipsToBounds = NO;
         [glassFooterView applyConstraintsToFillSuperview];
+        glassFooterView.style = NSGlassEffectViewStyleClear;
+        glassFooterView.tintColor = nil;
+        if (@available(macOS 27.0, *)) {
+            glassFooterView.effectIsInteractive = YES;
+        }
 
         self.buttonStack.edgeInsets = NSEdgeInsetsMake(
             VLCUIUnits.mediumSpacing,
@@ -307,14 +330,12 @@
     if (@available(macOS 11.0, *)) {
         self.shuffleButton.image = [NSImage imageWithSystemSymbolName:@"shuffle"
                                              accessibilityDescription:@"Shuffle"];
-        self.shuffleButton.contentTintColor =
-            self.playQueueController.playbackOrder == VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL ?
-                nil : NSColor.VLCAccentColor;
+        self.shuffleButton.contentTintColor = NSColor.VLCVividockAccentColor;
     } else {
         self.shuffleButton.image =
             self.playQueueController.playbackOrder == VLC_PLAYLIST_PLAYBACK_ORDER_NORMAL ?
                 NSImage.VLCShuffleOffImage :
-                [NSImage.VLCShuffleOnImage imageTintedWithColor:NSColor.VLCAccentColor];
+                [NSImage.VLCShuffleOnImage imageTintedWithColor:NSColor.VLCVividockAccentColor];
     }
 }
 
@@ -343,28 +364,28 @@
             case VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT:
                 self.repeatButton.image = [NSImage imageWithSystemSymbolName:@"repeat.1"
                                                     accessibilityDescription:@"Repeat current"];
-                self.repeatButton.contentTintColor = NSColor.VLCAccentColor;
+                self.repeatButton.contentTintColor = NSColor.VLCVividockAccentColor;
                 break;
             case VLC_PLAYLIST_PLAYBACK_REPEAT_ALL:
                 self.repeatButton.image = [NSImage imageWithSystemSymbolName:@"repeat"
                                                     accessibilityDescription:@"Repeat"];
-                self.repeatButton.contentTintColor = NSColor.VLCAccentColor;
+                self.repeatButton.contentTintColor = NSColor.VLCVividockAccentColor;
                 break;
             default:
                 self.repeatButton.image = [NSImage imageWithSystemSymbolName:@"repeat"
                                                     accessibilityDescription:@"Repeat"];
-                self.repeatButton.contentTintColor = nil;
+                self.repeatButton.contentTintColor = NSColor.VLCVividockAccentColor;
                 break;
         }
     } else {
         switch (repeatState) {
             case VLC_PLAYLIST_PLAYBACK_REPEAT_ALL:
                 self.repeatButton.image =
-                    [NSImage.VLCRepeatAllImage imageTintedWithColor:NSColor.VLCAccentColor];
+                    [NSImage.VLCRepeatAllImage imageTintedWithColor:NSColor.VLCVividockAccentColor];
                 break;
             case VLC_PLAYLIST_PLAYBACK_REPEAT_CURRENT:
                 self.repeatButton.image =
-                    [NSImage.VLCRepeatOneImage imageTintedWithColor:NSColor.VLCAccentColor];
+                    [NSImage.VLCRepeatOneImage imageTintedWithColor:NSColor.VLCVividockAccentColor];
                 break;
             default:
                 self.repeatButton.image = NSImage.VLCRepeatOffImage;

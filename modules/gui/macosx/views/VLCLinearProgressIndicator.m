@@ -58,10 +58,24 @@
     frame.size.width = 0.;
     _foregroundView = [[NSView alloc] initWithFrame:frame];
     _foregroundView.wantsLayer = YES;
-    _foregroundView.layer.backgroundColor = NSColor.VLCAccentColor.CGColor;
+    _foregroundView.layer.backgroundColor = NSColor.VLCVividockAccentColor.CGColor;
     _foregroundView.autoresizingMask = NSViewWidthSizable;
     _foregroundView.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:_foregroundView];
+    [NSNotificationCenter.defaultCenter addObserver:self
+                                           selector:@selector(vividockAccentChanged:)
+                                               name:VLCVividockAccentDidChangeNotification
+                                             object:nil];
+}
+
+- (void)dealloc
+{
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (void)vividockAccentChanged:(NSNotification *)notification
+{
+    _foregroundView.layer.backgroundColor = NSColor.VLCVividockAccentColor.CGColor;
 }
 
 - (void)setProgress:(CGFloat)progress
