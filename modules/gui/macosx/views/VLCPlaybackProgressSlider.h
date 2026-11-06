@@ -35,4 +35,9 @@
 /* Duration of the current item, used to compute the time shown on hover. */
 @property (readwrite, nonatomic) vlc_tick_t mediaDuration;
 
+/* NSSlider's action is not a reliable source of mouse-up on modern macOS.
+ * These handlers run around the blocking tracking loop in -mouseDown:. */
+@property (nonatomic, copy, nullable) void (^trackingBeganHandler)(void);
+@property (nonatomic, copy, nullable) void (^trackingEndedHandler)(void);
+
 @end

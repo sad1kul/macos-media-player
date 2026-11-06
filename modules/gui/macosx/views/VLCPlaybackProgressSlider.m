@@ -322,7 +322,17 @@
     // NSSlider runs its own tracking loop here; mouseMoved is not delivered
     // during the drag, so the hover would otherwise show a stale time.
     [self hideHoverWindow];
+
+    const BOOL shouldTrack = self.enabled && !self.indefinite;
+    if (shouldTrack && self.trackingBeganHandler) {
+        self.trackingBeganHandler();
+    }
+
     [super mouseDown:event];
+
+    if (shouldTrack && self.trackingEndedHandler) {
+        self.trackingEndedHandler();
+    }
 }
 
 - (void)setMediaDuration:(vlc_tick_t)mediaDuration

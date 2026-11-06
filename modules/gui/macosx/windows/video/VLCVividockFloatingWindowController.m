@@ -23,6 +23,7 @@
 #import <vlc_common.h>
 
 #import "extensions/NSString+Helpers.h"
+#import "extensions/NSColor+VLCAdditions.h"
 #import "extensions/NSView+VLCAdditions.h"
 
 #import "playqueue/VLCPlayerController.h"
@@ -107,6 +108,49 @@
 @end
 
 
+@interface VLCVividockSeekSliderCell : NSSliderCell
+@end
+
+@implementation VLCVividockSeekSliderCell
+
+- (void)drawBarInside:(NSRect)rect flipped:(BOOL)flipped
+{
+    const BOOL enabled = [(NSControl *)self.controlView isEnabled];
+    const CGFloat trackHeight = 4.;
+    NSRect trackRect = NSMakeRect(NSMinX(rect), NSMidY(rect) - trackHeight / 2., NSWidth(rect), trackHeight);
+    NSBezierPath * const background = [NSBezierPath bezierPathWithRoundedRect:trackRect
+                                                                      xRadius:trackHeight / 2.
+                                                                      yRadius:trackHeight / 2.];
+    [[NSColor colorWithWhite:1. alpha:enabled ? .24 : .12] setFill];
+    [background fill];
+
+    const double span = self.maxValue - self.minValue;
+    const double fraction = span > 0. ? (self.doubleValue - self.minValue) / span : 0.;
+    trackRect.size.width *= MIN(MAX(fraction, 0.), 1.);
+    if (trackRect.size.width > 0.) {
+        NSBezierPath * const progress = [NSBezierPath bezierPathWithRoundedRect:trackRect
+                                                                        xRadius:trackHeight / 2.
+                                                                        yRadius:trackHeight / 2.];
+        [[NSColor.VLCVividockAccentColor colorWithAlphaComponent:enabled ? .9 : .35] setFill];
+        [progress fill];
+    }
+}
+
+- (void)drawKnob:(NSRect)knobRect
+{
+    const BOOL enabled = [(NSControl *)self.controlView isEnabled];
+    NSRect insetRect = NSInsetRect(knobRect, 2., 2.);
+    NSBezierPath * const knob = [NSBezierPath bezierPathWithOvalInRect:insetRect];
+    [[NSColor.VLCVividockAccentColor colorWithAlphaComponent:enabled ? 1. : .4] setFill];
+    [knob fill];
+    [[NSColor colorWithWhite:1. alpha:.65] setStroke];
+    knob.lineWidth = 1.;
+    [knob stroke];
+}
+
+@end
+
+
 @interface VLCVividockFloatingWindowController () <NSWindowDelegate>
 {
     VLCPlayerController *_playerController;
@@ -119,8 +163,10 @@
     NSTextField *_durationField;
     NSView *_centerControlsView;
     NSView *_timelineControlsView;
-    NSView *_returnControlsView;
+    NSVisualEffectView *_returnControlsView;
     NSButton *_returnButton;
+    NSArray<NSVisualEffectView *> *_glassButtonViews;
+    NSVisualEffectView *_playPauseButtonView;
     NSTimer *_hideControlsTimer;
     BOOL _seekSliderIsBeingDragged;
     BOOL _closeHandlerCalled;
@@ -235,16 +281,17 @@
 
     NSVisualEffectView * const backwardButtonView =
         [self glassButtonViewContainingButton:_backwardButton diameter:48.];
-    NSVisualEffectView * const playPauseButtonView =
+    _playPauseButtonView =
         [self glassButtonViewContainingButton:_playPauseButton diameter:54.];
     NSVisualEffectView * const forwardButtonView =
         [self glassButtonViewContainingButton:_forwardButton diameter:48.];
 
     NSStackView * const buttonStack = [NSStackView stackViewWithViews:@[
         backwardButtonView,
-        playPauseButtonView,
+        _playPauseButtonView,
         forwardButtonView,
     ]];
+    _glassButtonViews = @[backwardButtonView, _playPauseButtonView, forwardButtonView, _returnControlsView];
     buttonStack.translatesAutoresizingMaskIntoConstraints = NO;
     buttonStack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
     buttonStack.alignment = NSLayoutAttributeCenterY;
@@ -255,6 +302,7 @@
     _elapsedTimeField.alignment = NSTextAlignmentRight;
 
     _seekSlider = [[VLCVividockSeekSlider alloc] initWithFrame:NSZeroRect];
+    _seekSlider.cell = [[VLCVividockSeekSliderCell alloc] init];
     _seekSlider.minValue = 0.;
     _seekSlider.maxValue = 1.;
     _seekSlider.target = self;
@@ -322,6 +370,8 @@
         [_durationField.widthAnchor constraintEqualToConstant:52.],
         [_seekSlider.widthAnchor constraintGreaterThanOrEqualToConstant:120.],
     ]];
+
+    [self updateAccentStyling:nil];
 }
 
 - (NSVisualEffectView *)overlayView
@@ -335,8 +385,8 @@
     overlayView.wantsLayer = YES;
     overlayView.layer.cornerRadius = 14.;
     overlayView.layer.masksToBounds = YES;
-    overlayView.layer.borderWidth = .5;
-    overlayView.layer.borderColor = [NSColor colorWithWhite:1. alpha:.24].CGColor;
+    overlayView.layer.borderWidth = 0.6;
+    overlayView.layer.borderColor = [NSColor colorWithWhite:1. alpha:0.22].CGColor;
     return overlayView;
 }
 
@@ -416,6 +466,35 @@
                                    name:name
                                  object:_playerController];
     }
+    [notificationCenter addObserver:self
+                           selector:@selector(updateAccentStyling:)
+                               name:VLCVividockAccentDidChangeNotification
+                             object:nil];
+    [notificationCenter addObserver:self
+                           selector:@selector(updateAccentStyling:)
+                               name:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification
+                             object:nil];
+}
+
+- (void)updateAccentStyling:(NSNotification *)notification
+{
+    NSColor * const accent = NSColor.VLCVividockAccentColor;
+    const BOOL reduceTransparency = NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceTransparency;
+
+    for (NSVisualEffectView * const buttonView in _glassButtonViews) {
+        buttonView.layer.borderColor = [NSColor colorWithWhite:1. alpha:reduceTransparency ? .45 : .22].CGColor;
+        buttonView.layer.borderWidth = reduceTransparency ? 1.5 : 0.6;
+    }
+    _playPauseButtonView.layer.borderColor = [NSColor colorWithWhite:1. alpha:reduceTransparency ? .55 : .28].CGColor;
+
+    if (@available(macOS 10.14, *)) {
+        _backwardButton.contentTintColor = accent;
+        _forwardButton.contentTintColor = accent;
+        _playPauseButton.contentTintColor = accent;
+    }
+    _timelineControlsView.layer.borderColor = [NSColor colorWithWhite:1. alpha:reduceTransparency ? .4 : .18].CGColor;
+    _timelineControlsView.layer.borderWidth = reduceTransparency ? 1. : 0.6;
+    _seekSlider.needsDisplay = YES;
 }
 
 - (void)showWindow:(id)sender

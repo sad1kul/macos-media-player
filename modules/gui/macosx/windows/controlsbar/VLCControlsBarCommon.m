@@ -24,6 +24,7 @@
 
 #import "VLCControlsBarCommon.h"
 
+#import "extensions/NSColor+VLCAdditions.h"
 #import "extensions/NSImage+VLCAdditions.h"
 #import "extensions/NSString+Helpers.h"
 
@@ -79,6 +80,9 @@
     CGFloat _jumpBackwardButtonOriginalSpacing;
     CGFloat _jumpForwardButtonOriginalSpacing;
 }
+
+- (void)setupTimeSliderTracking;
+
 @end
 
 @implementation VLCControlsBarCommon
@@ -123,6 +127,11 @@
                            selector:@selector(fullscreenStateUpdated:)
                                name:VLCPlayerFullscreenChanged
                              object:nil];
+    [notificationCenter addObserver:self
+                           selector:@selector(vividockAccentChanged:)
+                               name:VLCVividockAccentDidChangeNotification
+                             object:nil];
+    [self vividockAccentChanged:nil];
 
     _nativeFullscreenMode = var_InheritBool(getIntf(), "macosx-nativefullscreenmode");
     _isTimeSliderBeingDragged = NO;
@@ -150,6 +159,7 @@
 
     self.timeSlider.accessibilityLabel = _NS("Playback position");
     self.timeSlider.accessibilityTitle = _NS("Position");
+    [self setupTimeSliderTracking];
 
     self.fullscreenButton.toolTip = _NS("Enter fullscreen");
     self.fullscreenButton.accessibilityLabel = self.fullscreenButton.toolTip;
@@ -292,6 +302,21 @@
     [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 
+- (void)vividockAccentChanged:(NSNotification *)notification
+{
+    if (@available(macOS 10.14, *)) {
+        NSColor * const accent = NSColor.VLCVividockAccentColor;
+        self.playButton.contentTintColor = accent;
+        self.backwardButton.contentTintColor = accent;
+        self.forwardButton.contentTintColor = accent;
+        self.jumpBackwardButton.contentTintColor = accent;
+        self.jumpForwardButton.contentTintColor = accent;
+        self.muteVolumeButton.contentTintColor = accent;
+        self.fullscreenButton.contentTintColor = accent;
+        self.pipButton.contentTintColor = accent;
+    }
+}
+
 - (void)bottomBarViewFrameChanged:(NSNotification *)notification
 {
     [self updateJumpButtonVisibilityForWidth:self.bottomBarView.frame.size.width];
@@ -409,34 +434,46 @@
     [_playerController jumpForwardShort];
 }
 
+- (void)setupTimeSliderTracking
+{
+    __weak typeof(self) weakSelf = self;
+    self.timeSlider.trackingBeganHandler = ^{
+        typeof(self) strongSelf = weakSelf;
+        if (strongSelf == nil) {
+            return;
+        }
+        strongSelf->_isTimeSliderBeingDragged = YES;
+    };
+    self.timeSlider.trackingEndedHandler = ^{
+        typeof(self) strongSelf = weakSelf;
+        if (strongSelf == nil) {
+            return;
+        }
+        if (strongSelf->_playerController.seekable) {
+            [strongSelf->_playerController setPositionPrecise:strongSelf.timeSlider.floatValue];
+        }
+        strongSelf->_isTimeSliderBeingDragged = NO;
+        [strongSelf updateTimeSlider:nil];
+    };
+}
+
 - (IBAction)timeSliderAction:(id)sender
 {
     if (![sender respondsToSelector:@selector(floatValue)]) {
         return;
     }
-
-    switch (NSApp.currentEvent.type) {
-        case NSEventTypeLeftMouseDown:
-        {
-            _isTimeSliderBeingDragged = YES;
-            const float newPosition = [sender floatValue];
-            [_playerController setPositionFast:newPosition];
-            break;
-        }
-        case NSEventTypeLeftMouseDragged:
-        case NSEventTypeScrollWheel:
-        {
-            const float newPosition = [sender floatValue];
-            [_playerController setPositionFast:newPosition];
-            self.timeSlider.floatValue = newPosition;
-            break;
-        }
-        case NSEventTypeLeftMouseUp:
-            _isTimeSliderBeingDragged = NO;
-            break;
-        default:
-            return;
+    if (!_playerController.seekable) {
+        return;
     }
+
+    const float newPosition = [sender floatValue];
+    if (_isTimeSliderBeingDragged || NSApp.currentEvent.type == NSEventTypeScrollWheel) {
+        [_playerController setPositionFast:newPosition];
+        self.timeSlider.floatValue = newPosition;
+        return;
+    }
+
+    [_playerController setPositionPrecise:newPosition];
 }
 
 - (IBAction)volumeAction:(id)sender

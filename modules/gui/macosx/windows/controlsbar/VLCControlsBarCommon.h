@@ -74,6 +74,7 @@
 @property (readonly) BOOL nativeFullscreenMode;
 
 - (CGFloat)height;
+- (void)vividockAccentChanged:(NSNotification *)notification;
 
 - (IBAction)play:(id)sender;
 - (IBAction)bwd:(id)sender;
